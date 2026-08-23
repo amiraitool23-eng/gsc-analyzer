@@ -1,5 +1,8 @@
 # انتشار خودکار نسخه‌ی استاتیک روی GitHub Pages.
-# خروجی build فقط HTML/CSS/JS است و هیچ سروری لازم ندارد.
+#
+# منبع Pages این ریپو شاخه‌ی gh-pages است، پس این workflow خروجی build را
+# روی همان شاخه می‌گذارد. gh-pages فقط فایل‌های آماده‌ی سرو را دارد و کد منبع
+# ندارد؛ هیچ‌وقت دستی رویش کامیت نکنید — با هر push روی main بازنویسی می‌شود.
 name: Deploy to GitHub Pages
 
 on:
@@ -9,17 +12,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# اگر چند انتشار هم‌زمان شد، آخری برنده باشد ولی نیمه‌کاره رها نشود
+# اگر چند انتشار هم‌زمان شد، نیمه‌کاره رها نشود
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,21 +34,17 @@ jobs:
 
       - run: npm run build
 
-      # enablement: true خود GitHub Pages را در تنظیمات ریپو فعال می‌کند
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: انتشار خروجی build روی شاخه‌ی gh-pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # جلوی پردازش Jekyll را می‌گیرد تا فایل‌ها دست‌نخورده سرو شوند
+          touch dist/.nojekyll
+          cd dist
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "deploy: ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:gh-pages
