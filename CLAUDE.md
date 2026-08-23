@@ -12,6 +12,10 @@
   ثالث اضافه نکنید.
 - **توکن فقط در حافظه.** access token در state ری‌اکت نگه داشته می‌شود، نه در
   localStorage/sessionStorage/کوکی. با رفرش صفحه از بین می‌رود و این عمدی است.
+  استثنا نیست: **Client ID** رمز نیست (شناسه‌ی عمومی OAuth است که در هر درخواست به
+  گوگل دیده می‌شود) و در localStorage ذخیره می‌شود تا کاربر نسخه‌ی تحت وب را بدون
+  فایل `.env` استفاده کند. پیاده‌سازی: `src/lib/clientId.ts`. این را با توکن اشتباه
+  نگیرید — توکن هرگز نباید ذخیره شود.
 - **بدون CDN.** کاربران هدف در ایران هستند و CDNها در دسترس نیستند. فونت و هر
   دارایی دیگری باید فایل محلی داخل پروژه باشد (`public/`). تنها استثنا اسکریپت
   رسمی ورود گوگل است که چاره‌ای جز بارگذاری از `accounts.google.com` ندارد.
@@ -84,6 +88,7 @@ src/
     cache.ts        کش IndexedDB با کلید «پراپرتی + بازه‌ی تاریخ»
     metrics.ts      تجمیع و فرمت‌دهی اعداد (میانگین وزنی، CTR درصدی)
     dates.ts        بازه‌ی پیش‌فرض با در نظر گرفتن تأخیر داده
+    clientId.ts     خواندن/ذخیره‌ی Client ID (اول localStorage، بعد VITE_GOOGLE_CLIENT_ID)
   hooks/            useAuth / useSites / useReport
   components/       اجزای UI
 ```
@@ -108,5 +113,13 @@ npm run build      # tsc -b && vite build → خروجی استاتیک در dis
 npm run preview    # پیش‌نمایش خروجی build
 ```
 
-`VITE_GOOGLE_CLIENT_ID` باید در `.env.local` تنظیم شود (نمونه: `.env.example`).
-`.env.local` در `.gitignore` است و نباید کامیت شود.
+`VITE_GOOGLE_CLIENT_ID` را می‌شود در `.env.local` تنظیم کرد (نمونه: `.env.example`)؛
+`.env.local` در `.gitignore` است و نباید کامیت شود. اگر تنظیم نشود، اپ در خود UI
+Client ID را از کاربر می‌پرسد — نسخه‌ی منتشرشده روی GitHub Pages از همین مسیر کار می‌کند.
+
+## انتشار
+
+`.github/workflows/deploy.yml` با هر push روی `main` پروژه را build می‌کند و روی
+GitHub Pages می‌گذارد. چون `base` در `vite.config.ts` برابر `'./'` است، خروجی روی
+هر زیرپوشه‌ای کار می‌کند. هر origin جدیدی که سایت روی آن بالا می‌آید باید در
+Authorized JavaScript origins اپ گوگل ثبت شود، وگرنه ورود کار نمی‌کند.

@@ -6,6 +6,8 @@
  * توکن فقط در حافظه‌ی همین صفحه نگه داشته می‌شود — نه localStorage، نه کوکی.
  */
 
+import { getClientId } from './clientId'
+
 export const GSC_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client'
@@ -42,10 +44,6 @@ declare global {
   interface Window {
     google?: { accounts?: { oauth2?: GoogleOAuth2 } }
   }
-}
-
-export function getClientId(): string {
-  return (import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '').trim()
 }
 
 let gisPromise: Promise<GoogleOAuth2> | null = null
@@ -107,9 +105,7 @@ export function loadGis(): Promise<GoogleOAuth2> {
 export async function requestAccessToken(prompt: '' | 'consent' = ''): Promise<AccessToken> {
   const clientId = getClientId()
   if (!clientId) {
-    throw new Error(
-      'مقدار VITE_GOOGLE_CLIENT_ID تنظیم نشده است. فایل .env.local را بسازید و Client ID را در آن بگذارید.',
-    )
+    throw new Error('اول باید Client ID اپ گوگل خود را وارد کنید.')
   }
 
   const oauth2 = await loadGis()

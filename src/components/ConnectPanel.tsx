@@ -1,12 +1,23 @@
 interface Props {
   status: 'signedOut' | 'connecting' | 'expired'
   error: string | null
-  clientIdMissing: boolean
+  /** برای نمایش در بخش «تنظیمات»؛ خالی نیست چون این پنل فقط با Client ID تنظیم‌شده نشان داده می‌شود */
+  clientId: string
+  /** آیا Client ID از build آمده (اجرای محلی با .env.local) — آن‌وقت تغییرش از UI معنی ندارد */
+  clientIdFromEnv: boolean
   onSignIn: () => void
+  onChangeClientId: () => void
 }
 
 /** صفحه‌ی شروع: توضیح ابزار + دکمه‌ی «اتصال به سرچ کنسول». */
-export function ConnectPanel({ status, error, clientIdMissing, onSignIn }: Props) {
+export function ConnectPanel({
+  status,
+  error,
+  clientId,
+  clientIdFromEnv,
+  onSignIn,
+  onChangeClientId,
+}: Props) {
   return (
     <>
       {status === 'expired' && (
@@ -27,33 +38,34 @@ export function ConnectPanel({ status, error, clientIdMissing, onSignIn }: Props
           می‌گیرد؛ یعنی هیچ تغییری در حساب شما نمی‌دهد و فقط داده را می‌خواند.
         </p>
 
-        {clientIdMissing ? (
-          <div className="alert alert-error" role="alert">
-            <div className="alert-title">پیکربندی ناقص است</div>
+        <button className="btn btn-primary" onClick={onSignIn} disabled={status === 'connecting'}>
+          {status === 'connecting' ? 'در حال اتصال…' : 'اتصال به سرچ کنسول'}
+        </button>
+
+        {error && (
+          <div className="alert alert-error" role="alert" style={{ marginTop: 16 }}>
+            <div className="alert-title">ورود کامل نشد</div>
+            <p className="alert-body">{error}</p>
             <p className="alert-body">
-              مقدار <span className="ltr">VITE_GOOGLE_CLIENT_ID</span> تنظیم نشده. فایل{' '}
-              <span className="ltr">.env.local</span> را از روی{' '}
-              <span className="ltr">.env.example</span> بسازید، Client ID اپ گوگل خود را در آن
-              بگذارید و سرور توسعه را دوباره اجرا کنید.
+              اگر پیام گوگل درباره‌ی origin یا Client ID است: مطمئن شوید آدرس زیر در بخش{' '}
+              <span className="ltr">Authorized JavaScript origins</span> اپ گوگل ثبت شده باشد.
             </p>
+            <div className="origin-box ltr">
+              {typeof window !== 'undefined' ? window.location.origin : ''}
+            </div>
           </div>
-        ) : (
-          <>
-            <button
-              className="btn btn-primary"
-              onClick={onSignIn}
-              disabled={status === 'connecting'}
-            >
-              {status === 'connecting' ? 'در حال اتصال…' : 'اتصال به سرچ کنسول'}
-            </button>
-            {error && (
-              <div className="alert alert-error" role="alert" style={{ marginTop: 16 }}>
-                <div className="alert-title">ورود کامل نشد</div>
-                <p className="alert-body">{error}</p>
-              </div>
-            )}
-          </>
         )}
+
+        <div className="client-id-row">
+          <span className="faint">
+            Client ID فعلی: <span className="ltr">{clientId}</span>
+          </span>
+          {!clientIdFromEnv && (
+            <button className="btn btn-ghost btn-sm" onClick={onChangeClientId}>
+              تغییر Client ID
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="card">

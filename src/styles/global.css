@@ -624,3 +624,61 @@ table.data-table {
     max-width: 200px;
   }
 }
+
+/* ——— فرم تنظیم Client ID ——— */
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.field-wide {
+  width: 100%;
+  min-width: 0;
+}
+
+.field-warn {
+  color: var(--warn);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.setup-help {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.setup-help summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--primary);
+}
+
+.origin-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.client-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.client-id-row .ltr {
+  overflow-wrap: anywhere;
+}

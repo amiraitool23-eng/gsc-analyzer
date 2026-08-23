@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { ClientIdSetup } from './components/ClientIdSetup'
 import { ConnectPanel } from './components/ConnectPanel'
 import { DataTable } from './components/DataTable'
 import { ErrorAlert } from './components/ErrorAlert'
@@ -7,6 +8,7 @@ import { useAuth } from './hooks/useAuth'
 import { useReport } from './hooks/useReport'
 import { useSites } from './hooks/useSites'
 import { clearCache } from './lib/cache'
+import { getClientId, isClientIdFromEnv, saveClientId } from './lib/clientId'
 import { GSC_DATA_LAG_DAYS, defaultDateRange, formatDateFa, formatRelativeFa } from './lib/dates'
 import { displaySiteName } from './lib/gscApi'
 import { formatNumber } from './lib/metrics'
@@ -14,6 +16,9 @@ import { formatNumber } from './lib/metrics'
 export default function App() {
   const auth = useAuth()
   const [selectedSite, setSelectedSite] = useState<string | null>(null)
+  // Client ID در همین مرورگر ذخیره می‌شود تا نسخه‌ی تحت وب بدون فایل .env کار کند
+  const [clientId, setClientId] = useState(getClientId())
+  const [editingClientId, setEditingClientId] = useState(false)
 
   // بازه ثابت مایل‌استون ۱: سه ماه منتهی به (امروز − ۳ روز)
   const range = useMemo(() => defaultDateRange(), [])
@@ -30,6 +35,12 @@ export default function App() {
     setSelectedSite(null)
     await auth.signOut()
   }, [auth])
+
+  const handleSaveClientId = useCallback((value: string) => {
+    saveClientId(value)
+    setClientId(value)
+    setEditingClientId(false)
+  }, [])
 
   // پاک کردن کش یعنی «داده‌ی من روی این دستگاه بماند نه». پس بعد از پاک کردن،
   // عمداً دوباره دانلود نمی‌کنیم و به صفحه‌ی انتخاب پراپرتی برمی‌گردیم.
@@ -67,13 +78,24 @@ export default function App() {
           بک‌اندی ندارد و چیزی به هیچ سروری (به‌جز خود گوگل) فرستاده نمی‌شود.
         </div>
 
-        {/* هنوز پراپرتی‌ای انتخاب نشده: صفحه‌ی کامل ورود */}
-        {!signedIn && !selectedSite && (
+        {/* هنوز Client ID نداریم (یا کاربر می‌خواهد عوضش کند): فرم تنظیم */}
+        {!signedIn && !selectedSite && (clientId === '' || editingClientId) && (
+          <ClientIdSetup
+            current={clientId}
+            onSave={handleSaveClientId}
+            onCancel={clientId !== '' ? () => setEditingClientId(false) : undefined}
+          />
+        )}
+
+        {/* Client ID داریم و هنوز پراپرتی‌ای انتخاب نشده: صفحه‌ی ورود */}
+        {!signedIn && !selectedSite && clientId !== '' && !editingClientId && (
           <ConnectPanel
             status={auth.status === 'signedIn' ? 'signedOut' : auth.status}
             error={auth.error}
-            clientIdMissing={auth.clientIdMissing}
+            clientId={clientId}
+            clientIdFromEnv={isClientIdFromEnv()}
             onSignIn={() => void auth.signIn()}
+            onChangeClientId={() => setEditingClientId(true)}
           />
         )}
 
