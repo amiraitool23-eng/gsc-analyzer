@@ -3,7 +3,7 @@
  * هدف: بعد از رفرش صفحه لازم نباشد دوباره چند ده هزار سطر از گوگل گرفته شود.
  * کلید هر رکورد: پراپرتی + بازه‌ی تاریخ.
  */
-import type { DateRange, GscRow, ReportData, SiteTotals } from '../types'
+import type { DateRange, GscPageRow, GscRow, ReportData, SiteTotals } from '../types'
 
 const DB_NAME = 'gsc-analyzer'
 const DB_VERSION = 1
@@ -19,7 +19,8 @@ interface StoredReport {
   startDate: string
   endDate: string
   rows: GscRow[]
-  /** در رکوردهای ذخیره‌شده‌ی قدیمی وجود ندارد */
+  /** در رکوردهای ذخیره‌شده‌ی قدیمی وجود ندارند */
+  pageRows?: GscPageRow[]
   siteTotals?: SiteTotals
   fetchedAt: number
 }
@@ -94,6 +95,7 @@ export async function readReport(
     siteUrl: stored.siteUrl,
     range: { startDate: stored.startDate, endDate: stored.endDate },
     rows: stored.rows,
+    pageRows: stored.pageRows,
     siteTotals: stored.siteTotals,
     fetchedAt: stored.fetchedAt,
   }
@@ -107,6 +109,7 @@ export async function writeReport(report: ReportData): Promise<void> {
     startDate: report.range.startDate,
     endDate: report.range.endDate,
     rows: report.rows,
+    pageRows: report.pageRows,
     siteTotals: report.siteTotals,
     fetchedAt: report.fetchedAt,
   }

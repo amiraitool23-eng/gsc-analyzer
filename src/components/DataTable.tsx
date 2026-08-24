@@ -1,13 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import type { GscRow, SiteTotals } from '../types'
+import type { GscPageRow, SiteTotals } from '../types'
 import { computeTotals, formatCtr, formatNumber, formatPosition } from '../lib/metrics'
 import { CoverageNotice } from './CoverageNotice'
 import { SummaryCards } from './SummaryCards'
 
-export type SortKey = keyof Pick<
-  GscRow,
-  'page' | 'query' | 'clicks' | 'impressions' | 'ctr' | 'position'
->
+/** سطری که هر دو نما را پوشش می‌دهد؛ در نمای صفحه‌محور `query` وجود ندارد. */
+export type TableRow = GscPageRow & { query?: string }
+
+export type SortKey = 'page' | 'query' | 'clicks' | 'impressions' | 'ctr' | 'position'
 type SortDir = 'asc' | 'desc'
 
 interface Column {
@@ -45,12 +45,14 @@ const COLUMNS: Column[] = [
 const PAGE_SIZES = [25, 50, 100, 250]
 
 interface Props {
-  rows: GscRow[]
+  rows: TableRow[]
   /** آمار کل پراپرتی، برای مقایسه با جمع سطرهای جدول */
   siteTotals: SiteTotals | undefined
+  /** کدام نما؛ ستون کوئری و متن توضیح پوشش به این بستگی دارد */
+  variant: 'page' | 'query'
 }
 
-export function DataTable({ rows, siteTotals }: Props) {
+export function DataTable({ rows, siteTotals, variant }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('clicks')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [query, setQuery] = useState('')
@@ -60,12 +62,18 @@ export function DataTable({ rows, siteTotals }: Props) {
   // فیلتر روی ده‌ها هزار سطر سنگین است؛ با useDeferredValue تایپ کردن کند نمی‌شود.
   const deferredQuery = useDeferredValue(query)
 
+  const columns = useMemo(
+    () => (variant === 'query' ? COLUMNS : COLUMNS.filter((c) => c.key !== 'query')),
+    [variant],
+  )
+
   const filtered = useMemo(() => {
     const needle = deferredQuery.trim().toLowerCase()
     if (!needle) return rows
     return rows.filter(
       (row) =>
-        row.query.toLowerCase().includes(needle) || row.page.toLowerCase().includes(needle),
+        (row.query ?? '').toLowerCase().includes(needle) ||
+        row.page.toLowerCase().includes(needle),
     )
   }, [rows, deferredQuery])
 
@@ -73,7 +81,9 @@ export function DataTable({ rows, siteTotals }: Props) {
     const factor = sortDir === 'asc' ? 1 : -1
     const copy = filtered.slice()
     if (sortKey === 'page' || sortKey === 'query') {
-      copy.sort((a, b) => factor * a[sortKey].localeCompare(b[sortKey], 'fa'))
+      copy.sort(
+        (a, b) => factor * (a[sortKey] ?? '').localeCompare(b[sortKey] ?? '', 'fa'),
+      )
     } else {
       copy.sort((a, b) => factor * (a[sortKey] - b[sortKey]))
     }
@@ -108,8 +118,8 @@ export function DataTable({ rows, siteTotals }: Props) {
 
   return (
     <div className="progress" style={{ gap: 16 }}>
-      <CoverageNotice site={siteTotals} table={unfilteredTotals} />
-      <SummaryCards totals={totals} filtered={deferredQuery.trim() !== ''} />
+      <CoverageNotice site={siteTotals} table={unfilteredTotals} variant={variant} />
+      <SummaryCards totals={totals} filtered={deferredQuery.trim() !== ''} variant={variant} />
 
       <div className="toolbar">
         <input
@@ -117,7 +127,9 @@ export function DataTable({ rows, siteTotals }: Props) {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="جست‌وجو در کوئری یا آدرس صفحه…"
+          placeholder={
+            variant === 'query' ? 'جست‌وجو در کوئری یا آدرس صفحه…' : 'جست‌وجو در آدرس صفحه…'
+          }
           aria-label="جست‌وجو در سطرها"
         />
         <span className="faint">
@@ -145,7 +157,7 @@ export function DataTable({ rows, siteTotals }: Props) {
           <table className="data-table">
             <thead>
               <tr>
-                {COLUMNS.map((column) => {
+                {columns.map((column) => {
                   const active = column.key === sortKey
                   return (
                     <th
@@ -173,11 +185,11 @@ export function DataTable({ rows, siteTotals }: Props) {
             </thead>
             <tbody>
               {visible.map((row, i) => (
-                <tr key={`${safePage}-${i}-${row.page}-${row.query}`}>
+                <tr key={`${safePage}-${i}-${row.page}-${row.query ?? ''}`}>
                   <td className="cell-page" title={row.page}>
                     {row.page}
                   </td>
-                  <td className="cell-query">{row.query}</td>
+                  {variant === 'query' && <td className="cell-query">{row.query}</td>}
                   <td className="cell-num">{formatNumber(row.clicks)}</td>
                   <td className="cell-num">{formatNumber(row.impressions)}</td>
                   <td className="cell-num">{formatCtr(row.ctr)}</td>
@@ -186,7 +198,7 @@ export function DataTable({ rows, siteTotals }: Props) {
               ))}
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={COLUMNS.length}>
+                  <td colSpan={columns.length}>
                     <div className="empty-state">سطری با این جست‌وجو پیدا نشد.</div>
                   </td>
                 </tr>
