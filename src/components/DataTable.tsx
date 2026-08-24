@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import type { GscRow } from '../types'
+import type { GscRow, SiteTotals } from '../types'
 import { computeTotals, formatCtr, formatNumber, formatPosition } from '../lib/metrics'
+import { CoverageNotice } from './CoverageNotice'
 import { SummaryCards } from './SummaryCards'
 
 export type SortKey = keyof Pick<
@@ -45,9 +46,11 @@ const PAGE_SIZES = [25, 50, 100, 250]
 
 interface Props {
   rows: GscRow[]
+  /** آمار کل پراپرتی، برای مقایسه با جمع سطرهای جدول */
+  siteTotals: SiteTotals | undefined
 }
 
-export function DataTable({ rows }: Props) {
+export function DataTable({ rows, siteTotals }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('clicks')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [query, setQuery] = useState('')
@@ -100,8 +103,12 @@ export function DataTable({ rows }: Props) {
     }
   }
 
+  // مقایسه‌ی پوشش همیشه با جمع کل سطرها معنی دارد، نه با نتیجه‌ی فیلتر
+  const unfilteredTotals = useMemo(() => computeTotals(rows), [rows])
+
   return (
     <div className="progress" style={{ gap: 16 }}>
+      <CoverageNotice site={siteTotals} table={unfilteredTotals} />
       <SummaryCards totals={totals} filtered={deferredQuery.trim() !== ''} />
 
       <div className="toolbar">

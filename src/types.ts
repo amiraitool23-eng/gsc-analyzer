@@ -23,11 +23,29 @@ export interface DateRange {
   endDate: string
 }
 
+/**
+ * آمار کل پراپرتی در همان بازه — بدون هیچ بُعدی.
+ *
+ * این همان عددی است که صفحه‌ی Performance سرچ کنسول بالای نمودار نشان می‌دهد.
+ * با جمع سطرهای بُعد Query **نمی‌خواند** و نباید بخواند: گوگل کوئری‌های کم‌تکرار
+ * را گزارش نمی‌کند ولی کلیکشان در این آمار کل هست. نگه‌داشتن این عدد تنها راهی
+ * است که کاربر بفهمد چقدر از داده‌اش پشت کوئری‌های ناشناس پنهان مانده.
+ */
+export interface SiteTotals {
+  clicks: number
+  impressions: number
+  /** نسبت اعشاری، مثل بقیه‌ی جاها */
+  ctr: number
+  position: number
+}
+
 /** داده‌ی یک گزارش، همان چیزی که در IndexedDB کش می‌شود */
 export interface ReportData {
   siteUrl: string
   range: DateRange
   rows: GscRow[]
+  /** آمار کل سایت؛ ممکن است نباشد (کش قدیمی یا خطای همان یک درخواست) */
+  siteTotals?: SiteTotals
   /** زمان دریافت داده از گوگل (میلی‌ثانیه) */
   fetchedAt: number
 }
