@@ -19,6 +19,8 @@ export default function App() {
   // Client ID در همین مرورگر ذخیره می‌شود تا نسخه‌ی تحت وب بدون فایل .env کار کند
   const [clientId, setClientId] = useState(getClientId())
   const [editingClientId, setEditingClientId] = useState(false)
+  // پیش‌فرض صفحه‌محور: تنها نمایی که اعدادش با آمار واقعی سایت می‌خواند
+  const [view, setView] = useState<'page' | 'query'>('page')
 
   // بازه ثابت مایل‌استون ۱: سه ماه منتهی به (امروز − ۳ روز)
   const range = useMemo(() => defaultDateRange(), [])
@@ -219,7 +221,8 @@ export default function App() {
 
             {report.status === 'ready' && report.report && (
               <>
-                {report.report.rows.length === 0 ? (
+                {report.report.rows.length === 0 &&
+                (report.report.pageRows?.length ?? 0) === 0 ? (
                   <div className="card">
                     <div className="empty-state">
                       برای این پراپرتی در این بازه داده‌ای برنگشت. شاید پراپرتی تازه تأیید شده یا
@@ -227,10 +230,51 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <DataTable
-                    rows={report.report.rows}
-                    siteTotals={report.report.siteTotals}
-                  />
+                  <>
+                    <div className="tabs" role="tablist">
+                      <button
+                        role="tab"
+                        aria-selected={view === 'page'}
+                        className="tab"
+                        onClick={() => setView('page')}
+                      >
+                        صفحه‌محور
+                        <span className="tab-hint">ترافیک واقعی هر صفحه</span>
+                      </button>
+                      <button
+                        role="tab"
+                        aria-selected={view === 'query'}
+                        className="tab"
+                        onClick={() => setView('query')}
+                      >
+                        کوئری‌محور
+                        <span className="tab-hint">عبارت‌های جست‌وجو</span>
+                      </button>
+                    </div>
+
+                    {view === 'page' ? (
+                      report.report.pageRows ? (
+                        <DataTable
+                          rows={report.report.pageRows}
+                          siteTotals={report.report.siteTotals}
+                          variant="page"
+                        />
+                      ) : (
+                        <div className="card">
+                          <div className="empty-state">
+                            نمای صفحه‌محور برای این گزارش هنوز گرفته نشده. «به‌روزرسانی داده» را
+                            بزنید.
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <DataTable
+                        rows={report.report.rows}
+                        siteTotals={report.report.siteTotals}
+                        variant="query"
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}

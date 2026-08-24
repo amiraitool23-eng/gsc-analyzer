@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DateRange, FetchProgress, ReportData } from '../types'
 import { readReport, writeReport } from '../lib/cache'
-import { fetchAllRows, fetchSiteTotals } from '../lib/gscApi'
+import { fetchAllPageRows, fetchAllRows, fetchSiteTotals } from '../lib/gscApi'
 import { GscError, isGscError, networkError } from '../lib/errors'
 
 export type ReportStatus = 'idle' | 'loadingCache' | 'fetching' | 'ready' | 'error'
@@ -68,20 +68,23 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           setReport(cached)
           setFromCache(true)
           setStatus('ready')
-          // رکوردهای کش‌شده‌ی قدیمی آمار کل سایت را ندارند. یک درخواست کوچک
-          // است، پس بدون دانلود دوباره‌ی کل سطرها همان را می‌گیریم و کش را کامل می‌کنیم.
-          if (!cached.siteTotals && token) {
+          // رکوردهای کش‌شده‌ی قدیمی آمار کل سایت و نمای صفحه‌محور را ندارند.
+          // هر دو کوچک‌اند، پس بدون دانلود دوباره‌ی کل سطرهای کوئری تکمیلشان می‌کنیم.
+          const needsTotals = !cached.siteTotals
+          const needsPages = !cached.pageRows
+          if ((needsTotals || needsPages) && token) {
             try {
-              const totals = await fetchSiteTotals(siteUrl, range, {
-                token,
-                signal: controller.signal,
-              })
+              const req = { token, signal: controller.signal }
+              const [totals, pageRows] = await Promise.all([
+                needsTotals ? fetchSiteTotals(siteUrl, range, req) : cached.siteTotals,
+                needsPages ? fetchAllPageRows(siteUrl, range, req) : cached.pageRows,
+              ])
               if (!active) return
-              const filled = { ...cached, siteTotals: totals }
+              const filled = { ...cached, siteTotals: totals, pageRows }
               setReport(filled)
               void writeReport(filled)
             } catch {
-              /* بدون آمار کل هم گزارش قابل استفاده است */
+              /* بدون این دو هم گزارش کوئری‌محور قابل استفاده است */
             }
           }
           return
@@ -117,6 +120,17 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           if (isGscError(e) && e.kind === 'auth') throw e
         }
 
+        // نمای صفحه‌محور اول: سطرش خیلی کمتر است و سریع می‌آید
+        const pageRows = await fetchAllPageRows(
+          siteUrl,
+          range,
+          { token, signal: controller.signal },
+          (p) => {
+            if (active) setProgress(p)
+          },
+        )
+        if (!active) return
+
         const rows = await fetchAllRows(
           siteUrl,
           range,
@@ -126,7 +140,14 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           },
         )
         if (!active) return
-        const next: ReportData = { siteUrl, range, rows, siteTotals, fetchedAt: Date.now() }
+        const next: ReportData = {
+          siteUrl,
+          range,
+          rows,
+          pageRows,
+          siteTotals,
+          fetchedAt: Date.now(),
+        }
         setReport(next)
         setFromCache(false)
         setStatus('ready')

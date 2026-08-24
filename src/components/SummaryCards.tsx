@@ -5,6 +5,7 @@ interface Props {
   totals: Totals
   /** وقتی فیلتری فعال است، اعداد فقط برای سطرهای فیلترشده محاسبه شده‌اند */
   filtered: boolean
+  variant: 'page' | 'query'
 }
 
 /**
@@ -12,19 +13,26 @@ interface Props {
  * دقت: «میانگین موقعیت» اینجا وزنی با Impression است، نه میانگین ساده.
  * و CTR کل از تقسیم مجموع کلیک بر مجموع نمایش می‌آید، نه میانگین CTR سطرها.
  */
-export function SummaryCards({ totals, filtered }: Props) {
+export function SummaryCards({ totals, filtered, variant }: Props) {
   const suffix = filtered ? ' (فیلترشده)' : ''
+  const isPage = variant === 'page'
   return (
     <div className="summary-grid">
       <div className="stat">
-        <div className="stat-label">تعداد سطر{suffix}</div>
+        <div className="stat-label">{isPage ? 'تعداد صفحه' : 'تعداد سطر'}{suffix}</div>
         <div className="stat-value">{formatNumber(totals.rows)}</div>
-        <div className="stat-hint">هر سطر = یک ترکیب صفحه و کوئری</div>
+        <div className="stat-hint">
+          {isPage ? 'صفحه‌هایی که در نتایج دیده شده‌اند' : 'هر سطر = یک ترکیب صفحه و کوئری'}
+        </div>
       </div>
       <div className="stat">
         <div className="stat-label">کلیک{suffix}</div>
         <div className="stat-value">{formatNumber(totals.clicks)}</div>
-        <div className="stat-hint">فقط کلیک‌های منتسب به کوئری‌های نمایش‌داده‌شده</div>
+        <div className="stat-hint">
+          {isPage
+            ? 'تقریباً همه‌ی کلیک‌ها، شامل کوئری‌های ناشناس'
+            : 'فقط کلیک‌های منتسب به کوئری‌های نمایش‌داده‌شده'}
+        </div>
       </div>
       <div className="stat">
         <div className="stat-label">نمایش{suffix}</div>

@@ -1,4 +1,11 @@
-import type { DateRange, FetchProgress, GscRow, GscSite, SiteTotals } from '../types'
+import type {
+  DateRange,
+  FetchProgress,
+  GscPageRow,
+  GscRow,
+  GscSite,
+  SiteTotals,
+} from '../types'
 import { GscError, errorFromResponse, networkError } from './errors'
 
 const API_BASE = 'https://www.googleapis.com/webmasters/v3'
@@ -147,46 +154,37 @@ export async function fetchSiteTotals(
 }
 
 /**
- * دریافت کامل داده‌ی searchAnalytics با ابعاد page + query.
+ * دریافت کامل سطرها برای ابعاد داده‌شده، با صفحه‌بندی.
  *
  * API در هر درخواست حداکثر ROW_LIMIT سطر می‌دهد، پس با startRow صفحه‌بندی
  * می‌کنیم تا وقتی که پاسخی با کمتر از ROW_LIMIT سطر برگردد.
  */
-export async function fetchAllRows(
+async function fetchPaginated<T>(
   siteUrl: string,
   range: DateRange,
+  dimensions: string[],
   options: RequestOptions,
+  map: (row: NonNullable<SearchAnalyticsResponse['rows']>[number]) => T,
   onProgress?: (progress: FetchProgress) => void,
-): Promise<GscRow[]> {
+): Promise<T[]> {
   const path = `/sites/${encodeSiteUrl(siteUrl)}/searchAnalytics/query`
-  const rows: GscRow[] = []
+  const rows: T[] = []
 
   for (let request = 0; request < MAX_REQUESTS; request++) {
-    const startRow = request * ROW_LIMIT
-
     const data = await apiFetch<SearchAnalyticsResponse>(path, options, {
       method: 'POST',
       body: JSON.stringify({
         startDate: range.startDate,
         endDate: range.endDate,
-        dimensions: ['page', 'query'],
+        dimensions,
         rowLimit: ROW_LIMIT,
-        startRow,
+        startRow: request * ROW_LIMIT,
         dataState: 'final',
       }),
     })
 
     const batch = data.rows ?? []
-    for (const row of batch) {
-      rows.push({
-        page: row.keys?.[0] ?? '',
-        query: row.keys?.[1] ?? '',
-        clicks: row.clicks ?? 0,
-        impressions: row.impressions ?? 0,
-        ctr: row.ctr ?? 0,
-        position: row.position ?? 0,
-      })
-    }
+    for (const row of batch) rows.push(map(row))
 
     onProgress?.({ rowsFetched: rows.length, page: request + 1 })
 
@@ -201,4 +199,58 @@ export async function fetchAllRows(
       `بیش از ${MAX_REQUESTS * ROW_LIMIT} سطر داده برگشت و برای جلوگیری از گیر کردن مرورگر متوقف شدیم. ` +
       'بازه‌ی تاریخی کوتاه‌تری انتخاب کنید.',
   })
+}
+
+/** نمای کوئری‌محور: بُعد page + query */
+export function fetchAllRows(
+  siteUrl: string,
+  range: DateRange,
+  options: RequestOptions,
+  onProgress?: (progress: FetchProgress) => void,
+): Promise<GscRow[]> {
+  return fetchPaginated(
+    siteUrl,
+    range,
+    ['page', 'query'],
+    options,
+    (row) => ({
+      page: row.keys?.[0] ?? '',
+      query: row.keys?.[1] ?? '',
+      clicks: row.clicks ?? 0,
+      impressions: row.impressions ?? 0,
+      ctr: row.ctr ?? 0,
+      position: row.position ?? 0,
+    }),
+    onProgress,
+  )
+}
+
+/**
+ * نمای صفحه‌محور: فقط بُعد page.
+ *
+ * چرا جدا از نمای کوئری‌محور؟ چون کلیک‌های کوئری‌های ناشناس به صفحه نسبت داده
+ * می‌شوند ولی در گزارش بُعد query نمی‌آیند. پس این نما تقریباً کل ترافیک را
+ * پوشش می‌دهد و برای «هر صفحه چقدر کلیک گرفته» تنها نمای قابل‌اعتماد است.
+ * ضمناً چون هر صفحه یک سطر است، حجمش خیلی کمتر از page×query است.
+ */
+export function fetchAllPageRows(
+  siteUrl: string,
+  range: DateRange,
+  options: RequestOptions,
+  onProgress?: (progress: FetchProgress) => void,
+): Promise<GscPageRow[]> {
+  return fetchPaginated(
+    siteUrl,
+    range,
+    ['page'],
+    options,
+    (row) => ({
+      page: row.keys?.[0] ?? '',
+      clicks: row.clicks ?? 0,
+      impressions: row.impressions ?? 0,
+      ctr: row.ctr ?? 0,
+      position: row.position ?? 0,
+    }),
+    onProgress,
+  )
 }

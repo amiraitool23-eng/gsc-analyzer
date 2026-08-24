@@ -5,16 +5,25 @@ export interface GscSite {
   permissionLevel: string
 }
 
-/** یک سطر داده‌ی searchAnalytics با ابعاد page + query */
-export interface GscRow {
+/**
+ * یک سطر با بُعد `page` تنها.
+ *
+ * این نما به آمار واقعی سایت نزدیک است: کلیک‌های کوئری‌های ناشناس هم به صفحه
+ * نسبت داده می‌شوند، پس برخلاف نمای کوئری‌محور چیزی از قلم نمی‌افتد.
+ */
+export interface GscPageRow {
   page: string
-  query: string
   clicks: number
   impressions: number
   /** از API به صورت نسبت اعشاری می‌آید (۰٫۰۴۸ یعنی ۴٫۸٪) */
   ctr: number
   /** میانگین موقعیت این سطر؛ برای تجمیع باید وزنی با impressions حساب شود */
   position: number
+}
+
+/** یک سطر داده‌ی searchAnalytics با ابعاد page + query */
+export interface GscRow extends GscPageRow {
+  query: string
 }
 
 /** بازه‌ی تاریخی گزارش (هر دو به شکل YYYY-MM-DD) */
@@ -43,7 +52,10 @@ export interface SiteTotals {
 export interface ReportData {
   siteUrl: string
   range: DateRange
+  /** نمای کوئری‌محور: بُعد page + query */
   rows: GscRow[]
+  /** نمای صفحه‌محور: فقط بُعد page. در کش‌های قدیمی نیست و موقع خواندن تکمیل می‌شود. */
+  pageRows?: GscPageRow[]
   /** آمار کل سایت؛ ممکن است نباشد (کش قدیمی یا خطای همان یک درخواست) */
   siteTotals?: SiteTotals
   /** زمان دریافت داده از گوگل (میلی‌ثانیه) */

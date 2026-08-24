@@ -1,4 +1,4 @@
-import type { GscRow } from '../types'
+import type { GscPageRow } from '../types'
 
 /**
  * خلاصه‌ی آماری یک مجموعه سطر.
@@ -29,7 +29,7 @@ export const EMPTY_TOTALS: Totals = {
  * در میانگین ساده هم‌وزن می‌شوند و عدد نهایی به شدت به سمت کوئری‌های
  * دم‌بلندِ کم‌نمایش (که معمولاً موقعیت بدی دارند) کشیده می‌شود.
  */
-export function weightedPosition(rows: readonly GscRow[]): number {
+export function weightedPosition(rows: readonly GscPageRow[]): number {
   let weightedSum = 0
   let impressions = 0
   for (const row of rows) {
@@ -40,7 +40,7 @@ export function weightedPosition(rows: readonly GscRow[]): number {
 }
 
 /** تجمیع کلیک/نمایش/CTR/موقعیت روی مجموعه‌ای از سطرها */
-export function computeTotals(rows: readonly GscRow[]): Totals {
+export function computeTotals(rows: readonly GscPageRow[]): Totals {
   let clicks = 0
   let impressions = 0
   let weightedSum = 0
