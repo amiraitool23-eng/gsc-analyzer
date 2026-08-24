@@ -9,12 +9,15 @@ import { useReport } from './hooks/useReport'
 import { useSites } from './hooks/useSites'
 import { clearCache } from './lib/cache'
 import { getClientId, isClientIdFromEnv, saveClientId } from './lib/clientId'
+import type { PeriodId } from './lib/dates'
 import {
+  DEFAULT_PERIOD,
   GSC_DATA_LAG_DAYS,
-  defaultDateRange,
+  PERIODS,
   formatDateFa,
   formatRelativeFa,
   previousRange,
+  rangeForPeriod,
 } from './lib/dates'
 import { displaySiteName } from './lib/gscApi'
 import { formatNumber } from './lib/metrics'
@@ -28,9 +31,11 @@ export default function App() {
   // پیش‌فرض صفحه‌محور: تنها نمایی که اعدادش با آمار واقعی سایت می‌خواند
   const [view, setView] = useState<'page' | 'query'>('page')
   const [comparing, setComparing] = useState(false)
+  const [period, setPeriod] = useState<PeriodId>(DEFAULT_PERIOD)
 
-  // بازه ثابت مایل‌استون ۱: سه ماه منتهی به (امروز − ۳ روز)
-  const range = useMemo(() => defaultDateRange(), [])
+  // بازه‌ی انتخابی، منتهی به (امروز − ۳ روز). کلید کش شامل بازه است، پس
+  // برگشتن به بازه‌ای که قبلاً دیده شده دوباره دانلود نمی‌خواهد.
+  const range = useMemo(() => rangeForPeriod(period), [period])
 
   const onAuthExpired = useCallback(() => auth.markExpired(), [auth])
 
@@ -189,6 +194,19 @@ export default function App() {
                   )}
                 </div>
                 <div className="toolbar-spacer" />
+                <div className="period-picker" role="group" aria-label="بازه‌ی زمانی">
+                  {PERIODS.map((p) => (
+                    <button
+                      key={p.id}
+                      className="period-btn"
+                      aria-pressed={period === p.id}
+                      onClick={() => setPeriod(p.id)}
+                      disabled={report.status === 'fetching'}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
                 {report.report && (
                   <span className="faint">
                     {report.fromCache ? 'از کش محلی' : 'تازه از گوگل'} —{' '}

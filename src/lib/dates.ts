@@ -30,14 +30,49 @@ function addMonths(d: Date, months: number): Date {
 }
 
 /**
- * بازه‌ی پیش‌فرض گزارش:
- *   endDate   = امروز منهای ۳ روز (به‌خاطر تأخیر داده‌ی GSC)
- *   startDate = سه ماه قبل از endDate
+ * بازه‌های آماده.
+ *
+ * عمداً دقیقاً همان گزینه‌های صفحه‌ی Performance سرچ کنسول است (۷ روز، ۲۸ روز،
+ * ۳ / ۶ / ۱۲ ماه). اگر تعریف بازه با گوگل فرق کند، کاربر موقع مقایسه‌ی اعداد
+ * دوباره فکر می‌کند ابزار خراب است — همان سردرگمی‌ای که CoverageNotice برای
+ * رفعش ساخته شد. «ماهانه» در سرچ کنسول یعنی ۲۸ روز، نه ۳۰ روز.
  */
-export function defaultDateRange(today: Date = new Date()): DateRange {
+export type PeriodId = '7d' | '28d' | '3m' | '6m' | '12m'
+
+export interface Period {
+  id: PeriodId
+  label: string
+  /** طول بازه: یا بر حسب روز یا بر حسب ماه */
+  days?: number
+  months?: number
+}
+
+export const PERIODS: readonly Period[] = [
+  { id: '7d', label: '۷ روز', days: 7 },
+  { id: '28d', label: '۲۸ روز', days: 28 },
+  { id: '3m', label: '۳ ماه', months: 3 },
+  { id: '6m', label: '۶ ماه', months: 6 },
+  { id: '12m', label: '۱۲ ماه', months: 12 },
+]
+
+export const DEFAULT_PERIOD: PeriodId = '3m'
+
+/**
+ * بازه‌ی یک دوره‌ی آماده:
+ *   endDate   = امروز منهای ۳ روز (به‌خاطر تأخیر داده‌ی GSC)
+ *   startDate = به اندازه‌ی طول دوره عقب‌تر
+ */
+export function rangeForPeriod(period: PeriodId, today: Date = new Date()): DateRange {
   const end = addDays(today, -GSC_DATA_LAG_DAYS)
-  const start = addMonths(end, -3)
+  const spec = PERIODS.find((p) => p.id === period) ?? PERIODS[2]
+  // برای بازه‌های روزشمار، خودِ endDate هم جزو بازه است؛ پس days-1 عقب می‌رویم
+  const start = spec.days ? addDays(end, -(spec.days - 1)) : addMonths(end, -(spec.months ?? 3))
   return { startDate: toIsoDate(start), endDate: toIsoDate(end) }
+}
+
+/** بازه‌ی پیش‌فرض (سه ماه) */
+export function defaultDateRange(today: Date = new Date()): DateRange {
+  return rangeForPeriod(DEFAULT_PERIOD, today)
 }
 
 /** تبدیل YYYY-MM-DD به Date در تقویم محلی (نه UTC) */
