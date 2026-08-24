@@ -805,3 +805,35 @@ table.data-table {
   font-size: 13px;
   margin-top: 4px;
 }
+
+/* ——— انتخابگر بازه‌ی زمانی ——— */
+
+.period-picker {
+  display: flex;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+
+.period-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  padding: 5px 11px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.period-btn:not(:disabled):hover {
+  color: var(--text);
+}
+
+.period-btn[aria-pressed='true'] {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
