@@ -773,3 +773,35 @@ table.data-table {
   border-color: var(--ok);
   color: var(--ok);
 }
+
+/* ——— تغییر نسبت به دوره‌ی قبل ——— */
+
+.delta {
+  display: block;
+  font-size: 12px;
+  margin-top: 2px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta-up {
+  color: var(--ok);
+}
+
+.delta-down {
+  color: var(--danger);
+}
+
+.delta-flat,
+.delta-new {
+  color: var(--text-faint);
+}
+
+.delta-new {
+  font-weight: 500;
+}
+
+.stat .delta {
+  font-size: 13px;
+  margin-top: 4px;
+}

@@ -1,13 +1,24 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import type { GscPageRow, SiteTotals } from '../types'
+import type { ComparedRow } from '../lib/compare'
+import { mergeForCompare, totalsDelta } from '../lib/compare'
 import { computeTotals, formatCtr, formatNumber, formatPosition } from '../lib/metrics'
+import { DeltaCount, DeltaPosition } from './Delta'
 import { CoverageNotice } from './CoverageNotice'
 import { SummaryCards } from './SummaryCards'
 
 /** سطری که هر دو نما را پوشش می‌دهد؛ در نمای صفحه‌محور `query` وجود ندارد. */
 export type TableRow = GscPageRow & { query?: string }
 
-export type SortKey = 'page' | 'query' | 'clicks' | 'impressions' | 'ctr' | 'position'
+export type SortKey =
+  | 'page'
+  | 'query'
+  | 'clicks'
+  | 'impressions'
+  | 'ctr'
+  | 'position'
+  | 'deltaClicks'
+  | 'deltaPosition'
 type SortDir = 'asc' | 'desc'
 
 interface Column {
@@ -42,7 +53,32 @@ const COLUMNS: Column[] = [
   },
 ]
 
+/** ستون‌هایی که فقط در حالت مقایسه اضافه می‌شوند */
+const COMPARE_COLUMNS: Column[] = [
+  {
+    key: 'deltaClicks',
+    label: 'تغییر کلیک',
+    numeric: true,
+    defaultDir: 'desc',
+    title: 'نسبت به دوره‌ی قبل — برای دیدن بیشترین افت، صعودی مرتب کنید',
+  },
+  {
+    key: 'deltaPosition',
+    label: 'تغییر موقعیت',
+    numeric: true,
+    defaultDir: 'desc',
+    title: 'نسبت به دوره‌ی قبل — مثبت یعنی رتبه بهتر شده',
+  },
+]
+
 const PAGE_SIZES = [25, 50, 100, 250]
+
+/**
+ * سطری که در دوره‌ی قبل بوده ولی در دوره‌ی فعلی هیچ نمایشی نگرفته.
+ * موقعیتش بی‌معنی است (آخرین مقدار شناخته‌شده را نگه داشته‌ایم) و نباید
+ * به‌عنوان رتبه‌ی فعلی نشان داده شود.
+ */
+const vanished = (row: ComparedRow) => Boolean(row.prev) && row.impressions === 0
 
 interface Props {
   rows: TableRow[]
@@ -50,9 +86,11 @@ interface Props {
   siteTotals: SiteTotals | undefined
   /** کدام نما؛ ستون کوئری و متن توضیح پوشش به این بستگی دارد */
   variant: 'page' | 'query'
+  /** سطرهای دوره‌ی قبل؛ بودنش یعنی حالت مقایسه روشن است */
+  previousRows?: TableRow[]
 }
 
-export function DataTable({ rows, siteTotals, variant }: Props) {
+export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('clicks')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [query, setQuery] = useState('')
@@ -62,20 +100,31 @@ export function DataTable({ rows, siteTotals, variant }: Props) {
   // فیلتر روی ده‌ها هزار سطر سنگین است؛ با useDeferredValue تایپ کردن کند نمی‌شود.
   const deferredQuery = useDeferredValue(query)
 
-  const columns = useMemo(
-    () => (variant === 'query' ? COLUMNS : COLUMNS.filter((c) => c.key !== 'query')),
-    [variant],
+  const comparing = previousRows !== undefined
+
+  // در حالت مقایسه، سطرهای ناپدیدشده‌ی دوره‌ی قبل هم اضافه می‌شوند
+  const allRows: ComparedRow[] = useMemo(
+    () =>
+      previousRows
+        ? mergeForCompare(rows, previousRows)
+        : (rows as ComparedRow[]),
+    [rows, previousRows],
   )
+
+  const columns = useMemo(() => {
+    const base = variant === 'query' ? COLUMNS : COLUMNS.filter((c) => c.key !== 'query')
+    return comparing ? [...base, ...COMPARE_COLUMNS] : base
+  }, [variant, comparing])
 
   const filtered = useMemo(() => {
     const needle = deferredQuery.trim().toLowerCase()
-    if (!needle) return rows
-    return rows.filter(
+    if (!needle) return allRows
+    return allRows.filter(
       (row) =>
         (row.query ?? '').toLowerCase().includes(needle) ||
         row.page.toLowerCase().includes(needle),
     )
-  }, [rows, deferredQuery])
+  }, [allRows, deferredQuery])
 
   const sorted = useMemo(() => {
     const factor = sortDir === 'asc' ? 1 : -1
@@ -85,7 +134,7 @@ export function DataTable({ rows, siteTotals, variant }: Props) {
         (a, b) => factor * (a[sortKey] ?? '').localeCompare(b[sortKey] ?? '', 'fa'),
       )
     } else {
-      copy.sort((a, b) => factor * (a[sortKey] - b[sortKey]))
+      copy.sort((a, b) => factor * ((a[sortKey] ?? 0) - (b[sortKey] ?? 0)))
     }
     return copy
   }, [filtered, sortKey, sortDir])
@@ -115,11 +164,25 @@ export function DataTable({ rows, siteTotals, variant }: Props) {
 
   // مقایسه‌ی پوشش همیشه با جمع کل سطرها معنی دارد، نه با نتیجه‌ی فیلتر
   const unfilteredTotals = useMemo(() => computeTotals(rows), [rows])
+  const previousTotals = useMemo(
+    () => (previousRows ? computeTotals(previousRows) : undefined),
+    [previousRows],
+  )
+  const delta = useMemo(
+    () => (previousTotals ? totalsDelta(totals, previousTotals) : undefined),
+    [totals, previousTotals],
+  )
 
   return (
     <div className="progress" style={{ gap: 16 }}>
       <CoverageNotice site={siteTotals} table={unfilteredTotals} variant={variant} />
-      <SummaryCards totals={totals} filtered={deferredQuery.trim() !== ''} variant={variant} />
+      <SummaryCards
+        totals={totals}
+        filtered={deferredQuery.trim() !== ''}
+        variant={variant}
+        previous={previousTotals}
+        delta={delta}
+      />
 
       <div className="toolbar">
         <input
@@ -133,7 +196,7 @@ export function DataTable({ rows, siteTotals, variant }: Props) {
           aria-label="جست‌وجو در سطرها"
         />
         <span className="faint">
-          {formatNumber(sorted.length)} سطر از {formatNumber(rows.length)}
+          {formatNumber(sorted.length)} سطر از {formatNumber(allRows.length)}
         </span>
         <div className="toolbar-spacer" />
         <label className="faint">
@@ -193,7 +256,28 @@ export function DataTable({ rows, siteTotals, variant }: Props) {
                   <td className="cell-num">{formatNumber(row.clicks)}</td>
                   <td className="cell-num">{formatNumber(row.impressions)}</td>
                   <td className="cell-num">{formatCtr(row.ctr)}</td>
-                  <td className="cell-num">{formatPosition(row.position)}</td>
+                  <td className="cell-num">
+                    {/* سطری که در دوره‌ی فعلی اصلاً نمایش نگرفته، موقعیت ندارد */}
+                    {vanished(row) ? '—' : formatPosition(row.position)}
+                  </td>
+                  {comparing && (
+                    <>
+                      <td className="cell-num">
+                        <DeltaCount
+                          delta={row.deltaClicks}
+                          previous={row.prev?.clicks}
+                          isNew={!row.prev}
+                        />
+                      </td>
+                      <td className="cell-num">
+                        {vanished(row) ? (
+                          <span className="delta delta-down">دیده نشد</span>
+                        ) : (
+                          <DeltaPosition delta={row.deltaPosition} isNew={!row.prev} />
+                        )}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
               {visible.length === 0 && (
