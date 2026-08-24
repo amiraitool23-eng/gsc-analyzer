@@ -40,6 +40,32 @@ export function defaultDateRange(today: Date = new Date()): DateRange {
   return { startDate: toIsoDate(start), endDate: toIsoDate(end) }
 }
 
+/** تبدیل YYYY-MM-DD به Date در تقویم محلی (نه UTC) */
+function fromIsoDate(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** تعداد روزهای بازه، شاملِ هر دو سر */
+export function rangeLengthDays(range: DateRange): number {
+  const start = fromIsoDate(range.startDate)
+  const end = fromIsoDate(range.endDate)
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1
+}
+
+/**
+ * بازه‌ی هم‌اندازه‌ی بلافاصله قبل از بازه‌ی داده‌شده.
+ *
+ * برای مقایسه‌ی «این دوره در برابر دوره‌ی قبل» باید هر دو بازه دقیقاً هم‌طول باشند،
+ * وگرنه اختلاف اعداد فقط به‌خاطر تعداد روز است نه تغییر واقعی عملکرد.
+ */
+export function previousRange(range: DateRange): DateRange {
+  const days = rangeLengthDays(range)
+  const prevEnd = addDays(fromIsoDate(range.startDate), -1)
+  const prevStart = addDays(prevEnd, -(days - 1))
+  return { startDate: toIsoDate(prevStart), endDate: toIsoDate(prevEnd) }
+}
+
 /** نمایش تاریخ میلادی به شکل خوانا در UI فارسی */
 export function formatDateFa(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)

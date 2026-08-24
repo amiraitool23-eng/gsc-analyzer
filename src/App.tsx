@@ -9,7 +9,13 @@ import { useReport } from './hooks/useReport'
 import { useSites } from './hooks/useSites'
 import { clearCache } from './lib/cache'
 import { getClientId, isClientIdFromEnv, saveClientId } from './lib/clientId'
-import { GSC_DATA_LAG_DAYS, defaultDateRange, formatDateFa, formatRelativeFa } from './lib/dates'
+import {
+  GSC_DATA_LAG_DAYS,
+  defaultDateRange,
+  formatDateFa,
+  formatRelativeFa,
+  previousRange,
+} from './lib/dates'
 import { displaySiteName } from './lib/gscApi'
 import { formatNumber } from './lib/metrics'
 
@@ -21,6 +27,7 @@ export default function App() {
   const [editingClientId, setEditingClientId] = useState(false)
   // پیش‌فرض صفحه‌محور: تنها نمایی که اعدادش با آمار واقعی سایت می‌خواند
   const [view, setView] = useState<'page' | 'query'>('page')
+  const [comparing, setComparing] = useState(false)
 
   // بازه ثابت مایل‌استون ۱: سه ماه منتهی به (امروز − ۳ روز)
   const range = useMemo(() => defaultDateRange(), [])
@@ -30,6 +37,16 @@ export default function App() {
   const token = auth.status === 'signedIn' ? auth.token?.token ?? null : null
   const sitesState = useSites(token, onAuthExpired)
   const report = useReport({ siteUrl: selectedSite, range, token, onAuthExpired })
+
+  // دوره‌ی قبل با همان هوک گرفته می‌شود: کش، صفحه‌بندی و مدیریت خطا مشترک است.
+  // تا وقتی مقایسه روشن نشده siteUrl را null می‌دهیم تا هیچ درخواستی نرود.
+  const prevRange = useMemo(() => previousRange(range), [range])
+  const prevReport = useReport({
+    siteUrl: comparing ? selectedSite : null,
+    range: prevRange,
+    token,
+    onAuthExpired,
+  })
 
   const signedIn = auth.status === 'signedIn'
 
@@ -164,6 +181,12 @@ export default function App() {
                     سرچ کنسول {formatNumber(GSC_DATA_LAG_DAYS)} روز تأخیر دارد، برای همین بازه تا
                     امروز نیست.
                   </div>
+                  {comparing && (
+                    <div className="faint">
+                      مقایسه با دوره‌ی قبل: {formatDateFa(prevRange.startDate)} تا{' '}
+                      {formatDateFa(prevRange.endDate)} (هم‌طول با بازه‌ی بالا)
+                    </div>
+                  )}
                 </div>
                 <div className="toolbar-spacer" />
                 {report.report && (
@@ -172,6 +195,14 @@ export default function App() {
                     {formatRelativeFa(report.report.fetchedAt)}
                   </span>
                 )}
+                <button
+                  className={`btn btn-sm ${comparing ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setComparing((c) => !c)}
+                  aria-pressed={comparing}
+                  title={`مقایسه با ${formatDateFa(prevRange.startDate)} تا ${formatDateFa(prevRange.endDate)}`}
+                >
+                  {comparing ? 'بستن مقایسه' : 'مقایسه با دوره‌ی قبل'}
+                </button>
                 <button
                   className="btn btn-primary btn-sm"
                   onClick={report.refresh}
@@ -252,12 +283,34 @@ export default function App() {
                       </button>
                     </div>
 
+                    {comparing &&
+                      (prevReport.status === 'fetching' ||
+                        prevReport.status === 'loadingCache') && (
+                        <div className="alert alert-info">
+                          <p className="alert-body">
+                            در حال گرفتن داده‌ی دوره‌ی قبل… تا آماده شدنش، اعداد زیر فقط مربوط
+                            به دوره‌ی فعلی است.
+                          </p>
+                        </div>
+                      )}
+
+                    {comparing && prevReport.error && (
+                      <ErrorAlert
+                        error={prevReport.error}
+                        onRetry={prevReport.refresh}
+                        onSignIn={() => void auth.signIn('consent')}
+                      />
+                    )}
+
                     {view === 'page' ? (
                       report.report.pageRows ? (
                         <DataTable
                           rows={report.report.pageRows}
                           siteTotals={report.report.siteTotals}
                           variant="page"
+                          previousRows={
+                            comparing ? prevReport.report?.pageRows : undefined
+                          }
                         />
                       ) : (
                         <div className="card">
@@ -272,6 +325,7 @@ export default function App() {
                         rows={report.report.rows}
                         siteTotals={report.report.siteTotals}
                         variant="query"
+                        previousRows={comparing ? prevReport.report?.rows : undefined}
                       />
                     )}
                   </>
