@@ -1,4 +1,4 @@
-import type { DateRange, FetchProgress, GscRow, GscSite } from '../types'
+import type { DateRange, FetchProgress, GscRow, GscSite, SiteTotals } from '../types'
 import { GscError, errorFromResponse, networkError } from './errors'
 
 const API_BASE = 'https://www.googleapis.com/webmasters/v3'
@@ -107,6 +107,43 @@ export async function listSites(options: RequestOptions): Promise<GscSite[]> {
 
 interface SearchAnalyticsResponse {
   rows?: { keys?: string[]; clicks?: number; impressions?: number; ctr?: number; position?: number }[]
+}
+
+/**
+ * آمار کل پراپرتی در بازه — درخواستی **بدون بُعد**.
+ *
+ * چرا جدا؟ چون گزارشی که بُعد `query` دارد فقط کوئری‌های نام‌برده‌شده را شامل
+ * می‌شود و جمعش با آمار واقعی سایت فاصله‌ی زیادی دارد (اغلب بیش از ۹۰٪ کلیک‌ها
+ * از کوئری‌های ناشناس می‌آید). این عدد همان چیزی است که کاربر در صفحه‌ی
+ * Performance سرچ کنسول می‌بیند، و کنار هم گذاشتنشان تنها راه رفع سردرگمی است.
+ *
+ * بدون بُعد، aggregationType خودکار byProperty می‌شود — دقیقاً مثل UI گوگل.
+ */
+export async function fetchSiteTotals(
+  siteUrl: string,
+  range: DateRange,
+  options: RequestOptions,
+): Promise<SiteTotals> {
+  const data = await apiFetch<SearchAnalyticsResponse>(
+    `/sites/${encodeSiteUrl(siteUrl)}/searchAnalytics/query`,
+    options,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        startDate: range.startDate,
+        endDate: range.endDate,
+        rowLimit: 1,
+        dataState: 'final',
+      }),
+    },
+  )
+  const row = data.rows?.[0]
+  return {
+    clicks: row?.clicks ?? 0,
+    impressions: row?.impressions ?? 0,
+    ctr: row?.ctr ?? 0,
+    position: row?.position ?? 0,
+  }
 }
 
 /**

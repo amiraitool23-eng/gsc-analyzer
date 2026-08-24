@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DateRange, FetchProgress, ReportData } from '../types'
 import { readReport, writeReport } from '../lib/cache'
-import { fetchAllRows } from '../lib/gscApi'
+import { fetchAllRows, fetchSiteTotals } from '../lib/gscApi'
 import { GscError, isGscError, networkError } from '../lib/errors'
 
 export type ReportStatus = 'idle' | 'loadingCache' | 'fetching' | 'ready' | 'error'
@@ -68,6 +68,22 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           setReport(cached)
           setFromCache(true)
           setStatus('ready')
+          // رکوردهای کش‌شده‌ی قدیمی آمار کل سایت را ندارند. یک درخواست کوچک
+          // است، پس بدون دانلود دوباره‌ی کل سطرها همان را می‌گیریم و کش را کامل می‌کنیم.
+          if (!cached.siteTotals && token) {
+            try {
+              const totals = await fetchSiteTotals(siteUrl, range, {
+                token,
+                signal: controller.signal,
+              })
+              if (!active) return
+              const filled = { ...cached, siteTotals: totals }
+              setReport(filled)
+              void writeReport(filled)
+            } catch {
+              /* بدون آمار کل هم گزارش قابل استفاده است */
+            }
+          }
           return
         }
       }
@@ -88,6 +104,19 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
 
       setStatus('fetching')
       try {
+        // اول آمار کل سایت (یک درخواست سریع) تا اگر گرفتن سطرها طول کشید،
+        // عددِ مرجع از قبل آماده باشد. شکستش نباید کل گزارش را از کار بیندازد.
+        let siteTotals: Awaited<ReturnType<typeof fetchSiteTotals>> | undefined
+        try {
+          siteTotals = await fetchSiteTotals(siteUrl, range, {
+            token,
+            signal: controller.signal,
+          })
+        } catch (e) {
+          if (e instanceof DOMException && e.name === 'AbortError') throw e
+          if (isGscError(e) && e.kind === 'auth') throw e
+        }
+
         const rows = await fetchAllRows(
           siteUrl,
           range,
@@ -97,7 +126,7 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           },
         )
         if (!active) return
-        const next: ReportData = { siteUrl, range, rows, fetchedAt: Date.now() }
+        const next: ReportData = { siteUrl, range, rows, siteTotals, fetchedAt: Date.now() }
         setReport(next)
         setFromCache(false)
         setStatus('ready')

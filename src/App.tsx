@@ -219,13 +219,6 @@ export default function App() {
 
             {report.status === 'ready' && report.report && (
               <>
-                <div className="alert alert-info">
-                  <p className="alert-body">
-                    نکته: حدود ۹۳٪ کلیک‌های سرچ کنسول از کوئری‌های ناشناس می‌آید که در بُعد Query
-                    گزارش نمی‌شوند. بنابراین جمع کلیک این جدول با آمار کل سایت نمی‌خواند و
-                    تحلیل‌های صفحه‌محور قابل‌اعتمادترند.
-                  </p>
-                </div>
                 {report.report.rows.length === 0 ? (
                   <div className="card">
                     <div className="empty-state">
@@ -234,7 +227,10 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <DataTable rows={report.report.rows} />
+                  <DataTable
+                    rows={report.report.rows}
+                    siteTotals={report.report.siteTotals}
+                  />
                 )}
               </>
             )}

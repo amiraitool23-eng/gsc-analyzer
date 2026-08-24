@@ -682,3 +682,44 @@ table.data-table {
 .client-id-row .ltr {
   overflow-wrap: anywhere;
 }
+
+/* ——— مقایسه‌ی پوشش داده با آمار کل سایت ——— */
+
+.coverage {
+  gap: 12px;
+}
+
+.coverage-table {
+  border-collapse: collapse;
+  font-size: 14px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.coverage-table th,
+.coverage-table td {
+  padding: 6px 10px;
+  text-align: start;
+  border-bottom: 1px solid currentColor;
+  border-color: color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.coverage-table thead th {
+  font-size: 13px;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.coverage-table tbody th {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.coverage-table td {
+  text-align: end;
+}
+
+.coverage-table tbody tr:last-child th,
+.coverage-table tbody tr:last-child td {
+  border-bottom: none;
+}
