@@ -1021,3 +1021,104 @@ table.data-table {
 .th-numeric .th-plain {
   text-align: end;
 }
+
+/* ——— فیلترهای ترکیبی ——— */
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-inline-start: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.filter-chip-x {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 999px;
+}
+
+.filter-chip-x:hover {
+  color: var(--danger);
+}
+
+.filters-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-input {
+  min-width: 0;
+  flex: 1 1 160px;
+}
+
+.filter-input-num {
+  flex: 0 0 110px;
+  min-width: 90px;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-hint {
+  flex: 1 1 100%;
+  margin-inline-start: 2px;
+}
+
+.filters-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+@media (max-width: 720px) {
+  .filter-row .select,
+  .filter-input {
+    flex: 1 1 100%;
+  }
+}

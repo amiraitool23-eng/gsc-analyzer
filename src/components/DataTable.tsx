@@ -2,7 +2,10 @@ import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import type { GscPageRow, SiteTotals } from '../types'
 import type { ComparedRow } from '../lib/compare'
 import { mergeForCompare, totalsDelta } from '../lib/compare'
+import type { Filter } from '../lib/filters'
+import { applyFilters, isComplete } from '../lib/filters'
 import { computeTotals, formatCtr, formatNumber, formatPosition } from '../lib/metrics'
+import { FilterPanel } from './FilterPanel'
 import { DeltaCount, DeltaPosition } from './Delta'
 import { CoverageNotice } from './CoverageNotice'
 import { SummaryCards } from './SummaryCards'
@@ -96,6 +99,8 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
   const [query, setQuery] = useState('')
   const [pageSize, setPageSize] = useState(50)
   const [pageIndex, setPageIndex] = useState(0)
+  const [filters, setFilters] = useState<Filter[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // فیلتر روی ده‌ها هزار سطر سنگین است؛ با useDeferredValue تایپ کردن کند نمی‌شود.
   const deferredQuery = useDeferredValue(query)
@@ -117,14 +122,18 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
   }, [variant, comparing])
 
   const filtered = useMemo(() => {
+    const byFilters = applyFilters(allRows, filters)
     const needle = deferredQuery.trim().toLowerCase()
-    if (!needle) return allRows
-    return allRows.filter(
+    if (!needle) return byFilters
+    return byFilters.filter(
       (row) =>
         (row.query ?? '').toLowerCase().includes(needle) ||
         row.page.toLowerCase().includes(needle),
     )
-  }, [allRows, deferredQuery])
+  }, [allRows, deferredQuery, filters])
+
+  const activeFilterCount = filters.filter(isComplete).length
+  const narrowed = activeFilterCount > 0 || deferredQuery.trim() !== ''
 
   const sorted = useMemo(() => {
     const factor = sortDir === 'asc' ? 1 : -1
@@ -151,7 +160,7 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
   // با تغییر فیلتر/مرتب‌سازی/اندازه‌ی صفحه به صفحه‌ی اول برگرد
   useEffect(() => {
     setPageIndex(0)
-  }, [deferredQuery, sortKey, sortDir, pageSize])
+  }, [deferredQuery, sortKey, sortDir, pageSize, filters])
 
   const toggleSort = (column: Column) => {
     if (column.key === sortKey) {
@@ -178,10 +187,19 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
       <CoverageNotice site={siteTotals} table={unfilteredTotals} variant={variant} />
       <SummaryCards
         totals={totals}
-        filtered={deferredQuery.trim() !== ''}
+        filtered={narrowed}
         variant={variant}
         previous={previousTotals}
         delta={delta}
+      />
+
+      <FilterPanel
+        filters={filters}
+        onChange={setFilters}
+        variant={variant}
+        comparing={comparing}
+        open={filtersOpen}
+        onToggle={() => setFiltersOpen((v) => !v)}
       />
 
       <div className="toolbar">
@@ -197,6 +215,7 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
         />
         <span className="faint">
           {formatNumber(sorted.length)} سطر از {formatNumber(allRows.length)}
+          {narrowed && sorted.length === 0 && ' — هیچ سطری با این شرط‌ها نماند'}
         </span>
         <div className="toolbar-spacer" />
         <label className="faint">
@@ -283,7 +302,11 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
               {visible.length === 0 && (
                 <tr>
                   <td colSpan={columns.length}>
-                    <div className="empty-state">سطری با این جست‌وجو پیدا نشد.</div>
+                    <div className="empty-state">
+                      {activeFilterCount > 0
+                        ? 'هیچ سطری همه‌ی شرط‌ها را با هم ندارد. یکی از شرط‌ها را شل‌تر کنید.'
+                        : 'سطری با این جست‌وجو پیدا نشد.'}
+                    </div>
                   </td>
                 </tr>
               )}
