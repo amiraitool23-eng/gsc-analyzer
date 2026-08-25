@@ -37,8 +37,12 @@ const MIN_POINTS = 2
 export interface CurvePoint {
   /** میانگین وزنیِ موقعیت سطرهای این سطل (نه وسط بازه — واقعی‌تر است) */
   position: number
-  /** CTR تجمیعی این سطل: Σclicks ÷ Σimpressions */
+  /** CTR انتظاری این سطل بعد از هموارسازی نزولی */
   ctr: number
+  /** CTR خام همین سطل: Σclicks ÷ Σimpressions، پیش از هموارسازی */
+  rawCtr: number
+  /** آیا این سطل برای رعایت نزولی بودن با سطل‌های مجاور ادغام شد */
+  pooled: boolean
   rows: number
   /** جمع نمایش سطل — برای اینکه کاربر ببیند نقطه روی چقدر داده ایستاده */
   impressions: number
@@ -54,6 +58,64 @@ export interface CtrCurve {
   rowsUsed: number
 }
 
+interface Bucket {
+  position: number
+  clicks: number
+  impressions: number
+  rows: number
+}
+
+/**
+ * هموارسازی نزولی با «ادغام سطل‌های ناقض» (isotonic regression / PAVA)، وزن‌دار با نمایش.
+ *
+ * چرا لازم است؟ سطل‌های انتهای منحنی روی چند کلیک می‌ایستند. سطلی با ۱۹۷ نمایش و
+ * ۳ کلیک، CTR ۱٫۵۲٪ می‌دهد — سه برابرِ سطل رتبه‌ی ۱۳ که روی ۱٬۳۷۰ نمایش ایستاده.
+ * یعنی منحنی می‌گوید «هرچه رتبه بدتر، CTR بهتر»، که هم غلط است و هم خطرناک: با آن،
+ * صفحه‌های ته‌جدول بی‌خود «زیر انتظار» علامت می‌خورند.
+ *
+ * قید درست همان چیزی است که از دامنه می‌دانیم: **CTR با بدتر شدن رتبه بالا نمی‌رود.**
+ * هر جا این قید نقض شود، سطل با سطل قبلی ادغام می‌شود و CTR مشترکشان از جمع کلیک بر
+ * جمع نمایش می‌آید. نتیجه: سطل پرداده دست‌نخورده می‌ماند (صدر منحنی که مهم است) و
+ * سطل کم‌داده در همسایه‌اش حل می‌شود.
+ *
+ * جهت خطا هم امن است: انتظار در دم منحنی **پایین‌تر** می‌آید، پس فرصتِ الکی نمی‌سازد.
+ */
+function smoothDecreasing(buckets: Bucket[]): CurvePoint[] {
+  // هر بلوک یک یا چند سطلِ ادغام‌شده است
+  const blocks: { clicks: number; impressions: number; members: Bucket[] }[] = []
+
+  for (const bucket of buckets) {
+    blocks.push({ clicks: bucket.clicks, impressions: bucket.impressions, members: [bucket] })
+    // تا وقتی بلوک آخر از بلوک قبلی CTR بیشتری دارد، در آن حل شود
+    while (blocks.length > 1) {
+      const last = blocks[blocks.length - 1]
+      const prev = blocks[blocks.length - 2]
+      if (last.clicks / last.impressions <= prev.clicks / prev.impressions) break
+      blocks.pop()
+      prev.clicks += last.clicks
+      prev.impressions += last.impressions
+      prev.members.push(...last.members)
+    }
+  }
+
+  const points: CurvePoint[] = []
+  for (const block of blocks) {
+    const ctr = block.clicks / block.impressions
+    const pooled = block.members.length > 1
+    for (const m of block.members) {
+      points.push({
+        position: m.position,
+        ctr,
+        rawCtr: m.clicks / m.impressions,
+        pooled,
+        rows: m.rows,
+        impressions: m.impressions,
+      })
+    }
+  }
+  return points
+}
+
 /**
  * ساخت منحنی از سطرهای کوئری‌محور.
  * @param isBrand کوئری‌های برند از منحنی کنار گذاشته می‌شوند
@@ -66,7 +128,7 @@ export function buildCtrCurve(
   const brandRows = usable.filter((r) => isBrand(r.query))
   const nonBrand = usable.filter((r) => !isBrand(r.query))
 
-  const points: CurvePoint[] = []
+  const buckets: Bucket[] = []
   for (let i = 0; i < BUCKET_EDGES.length - 1; i++) {
     const from = BUCKET_EDGES[i]
     const to = BUCKET_EDGES[i + 1]
@@ -83,15 +145,16 @@ export function buildCtrCurve(
     }
     if (impressions < MIN_IMPRESSIONS_PER_BUCKET) continue
 
-    points.push({
+    buckets.push({
       position: weightedPos / impressions,
-      ctr: clicks / impressions,
-      rows: inBucket.length,
+      clicks,
       impressions,
+      rows: inBucket.length,
     })
   }
 
-  points.sort((a, b) => a.position - b.position)
+  buckets.sort((a, b) => a.position - b.position)
+  const points = smoothDecreasing(buckets)
 
   return {
     points,

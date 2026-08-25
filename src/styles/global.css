@@ -1295,3 +1295,9 @@ table.data-table {
   padding-top: 14px;
   margin: 0;
 }
+
+.opp-pooled {
+  color: var(--text-faint);
+  margin-inline-start: 4px;
+  cursor: help;
+}
