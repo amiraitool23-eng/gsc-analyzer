@@ -213,6 +213,9 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
                     <span className="th-plain">CTR انتظاری</span>
                   </th>
                   <th className="th-numeric">
+                    <span className="th-plain">نمایش</span>
+                  </th>
+                  <th className="th-numeric">
                     <span className="th-plain">تعداد کوئری</span>
                   </th>
                 </tr>
@@ -222,6 +225,7 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
                   <tr key={p.position}>
                     <td className="cell-num">{formatPosition(p.position)}</td>
                     <td className="cell-num">{formatCtr(p.ctr)}</td>
+                    <td className="cell-num">{formatNumber(p.impressions)}</td>
                     <td className="cell-num">{formatNumber(p.rows)}</td>
                   </tr>
                 ))}
@@ -229,8 +233,9 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
             </table>
           </div>
           <p className="filter-hint">
-            هر سطر میانه‌ی موقعیت و میانه‌ی CTR یک بازه‌ی رتبه است. CTR انتظاری هر صفحه با
-            درون‌یابی بین همین نقطه‌ها به دست می‌آید.
+            هر سطر یک بازه‌ی رتبه است: CTR آن از تقسیم کل کلیک بر کل نمایشِ همان بازه
+            می‌آید (نه میانگین ستون CTR). CTR انتظاری هر صفحه با درون‌یابی بین همین
+            نقطه‌ها به دست می‌آید.
           </p>
         </details>
       )}

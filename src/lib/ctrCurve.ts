@@ -14,23 +14,34 @@ import type { GscRow } from '../types'
  * منحنی از سطرهای **کوئری‌محور** ساخته می‌شود، نه صفحه‌محور: موقعیت یک کوئری
  * عدد واقعی است، ولی موقعیت یک صفحه میانگین چند کوئری با موقعیت‌های متفاوت
  * است و برای ساخت منحنی گمراه‌کننده می‌شود.
+ *
+ * **CTR هر سطل تجمیعی است (Σclicks ÷ Σimpressions)، نه میانه یا میانگینِ ستون ctr.**
+ * این را یک بار اشتباه پیاده کردیم و نتیجه‌اش روی سایت واقعی «انتظار ۰٪» برای همه‌ی
+ * سطل‌ها بود: در هر سایتی بیشترِ کوئری‌های دم‌بلند صفر کلیک دارند، پس **میانه‌ی**
+ * ستون ctr صفر می‌شود و منحنی می‌میرد. ضمناً CTR هر صفحه هم خودش تجمیعی است، پس
+ * فقط با معیار تجمیعی مقایسه‌شان هم‌جنس است. (همان قاعده‌ی بند ۱ در CLAUDE.md.)
  */
 
 /** مرزهای سطل‌های موقعیت؛ نزدیک صدر ریزتر، چون تفاوت CTR آنجا شدیدتر است */
 const BUCKET_EDGES = [1, 2, 3, 4, 5, 6, 8, 11, 16, 21, 31, 51, Infinity]
 
-/** زیر این تعداد سطر، میانه‌ی سطل قابل اتکا نیست */
+/** زیر این تعداد سطر، سطل قابل اتکا نیست */
 const MIN_ROWS_PER_BUCKET = 5
+
+/** و زیر این تعداد نمایش هم نه: ۵ کوئریِ ۲ نمایشی عدد معناداری نمی‌سازند */
+const MIN_IMPRESSIONS_PER_BUCKET = 50
 
 /** با کمتر از این تعداد نقطه، درون‌یابی بی‌معنی است */
 const MIN_POINTS = 2
 
 export interface CurvePoint {
-  /** میانه‌ی موقعیت سطرهای این سطل (نه وسط بازه — واقعی‌تر است) */
+  /** میانگین وزنیِ موقعیت سطرهای این سطل (نه وسط بازه — واقعی‌تر است) */
   position: number
-  /** میانه‌ی CTR سطرهای این سطل، به‌صورت نسبت */
+  /** CTR تجمیعی این سطل: Σclicks ÷ Σimpressions */
   ctr: number
   rows: number
+  /** جمع نمایش سطل — برای اینکه کاربر ببیند نقطه روی چقدر داده ایستاده */
+  impressions: number
 }
 
 export interface CtrCurve {
@@ -41,13 +52,6 @@ export interface CtrCurve {
   brandRowsExcluded: number
   /** چند سطر در ساخت منحنی استفاده شد */
   rowsUsed: number
-}
-
-function median(values: number[]): number {
-  if (values.length === 0) return 0
-  const sorted = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 }
 
 /**
@@ -68,10 +72,22 @@ export function buildCtrCurve(
     const to = BUCKET_EDGES[i + 1]
     const inBucket = nonBrand.filter((r) => r.position >= from && r.position < to)
     if (inBucket.length < MIN_ROWS_PER_BUCKET) continue
+
+    let clicks = 0
+    let impressions = 0
+    let weightedPos = 0
+    for (const r of inBucket) {
+      clicks += r.clicks
+      impressions += r.impressions
+      weightedPos += r.position * r.impressions
+    }
+    if (impressions < MIN_IMPRESSIONS_PER_BUCKET) continue
+
     points.push({
-      position: median(inBucket.map((r) => r.position)),
-      ctr: median(inBucket.map((r) => r.ctr)),
+      position: weightedPos / impressions,
+      ctr: clicks / impressions,
       rows: inBucket.length,
+      impressions,
     })
   }
 
