@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { GscPageRow, GscRow } from '../types'
 import { guessBrandTerms, makeBrandMatcher, normalizeForMatch } from '../lib/brand'
-import { loadBrandTerms, saveBrandTerms } from '../lib/brandStore'
+import {
+  loadBrandTerms,
+  loadConfirmedTerms,
+  sameTerms,
+  saveBrandTerms,
+  saveConfirmedTerms,
+} from '../lib/brandStore'
 import { buildCtrCurve } from '../lib/ctrCurve'
 import type { Confidence, Opportunity } from '../lib/opportunities'
 import { findOpportunities } from '../lib/opportunities'
 import { formatCtr, formatNumber, formatPosition } from '../lib/metrics'
+import { PageLink } from './PageLink'
 
 /**
  * «فرصت‌های بهبود CTR» — مرحله‌ی ۱ تا ۳ بهینه‌سازی محتوا.
@@ -49,6 +56,11 @@ interface Props {
 
 export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
   const [brandTerms, setBrandTerms] = useState<string[]>(() => loadBrandTerms(siteUrl))
+  // کلماتی که فرصت‌های روی صفحه بر اساسشان حساب شده‌اند. null یعنی کاربر هنوز
+  // تأیید نکرده و اصلاً نباید فهرستی نشان داده شود.
+  const [appliedTerms, setAppliedTerms] = useState<string[] | null>(() =>
+    loadConfirmedTerms(siteUrl),
+  )
   const [draftTerm, setDraftTerm] = useState('')
   const [onlyMeaningful, setOnlyMeaningful] = useState(true)
   const [visible, setVisible] = useState(PAGE_STEP)
@@ -57,16 +69,60 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
   // عوض شدن پراپرتی یعنی فهرست برند دیگری؛ حالت قبلی نباید بماند
   useEffect(() => {
     setBrandTerms(loadBrandTerms(siteUrl))
+    setAppliedTerms(loadConfirmedTerms(siteUrl))
     setExpanded(null)
     setVisible(PAGE_STEP)
   }, [siteUrl])
 
-  const isBrand = useMemo(() => makeBrandMatcher(brandTerms), [brandTerms])
+  // منحنی و فرصت‌ها از کلماتِ **تأییدشده** می‌آیند، نه از چیزی که در حال تایپ است
+  const applied = appliedTerms ?? []
+  const isBrand = useMemo(() => makeBrandMatcher(applied), [appliedTerms])
   const curve = useMemo(() => buildCtrCurve(queryRows, isBrand), [queryRows, isBrand])
   const all = useMemo(
     () => findOpportunities(pageRows ?? [], curve),
     [pageRows, curve],
   )
+
+  const confirmed = appliedTerms !== null
+  const stale = confirmed && !sameTerms(appliedTerms, brandTerms)
+
+  const applyTerms = () => {
+    saveConfirmedTerms(siteUrl, brandTerms)
+    setAppliedTerms(brandTerms)
+    setExpanded(null)
+    setVisible(PAGE_STEP)
+  }
+
+  /**
+   * پیشنهاد کلمه‌ی برند از دادهٔ خود کاربر.
+   *
+   * ابزار نام فارسی برند را از دامنه نمی‌تواند دربیاورد، ولی می‌تواند جایی را نشان
+   * دهد که آن نام تقریباً حتماً آنجاست: کوئری‌هایی که در رتبه‌های صدر CTR غیرعادی
+   * بالایی دارند. کلیک روی هرکدام، متن را در کادر ورودی می‌گذارد تا کاربر خودش
+   * فقط بخشِ برند را نگه دارد — نه اینکه ابزار کل عبارت را کلمه‌ی برند فرض کند.
+   */
+  const brandCandidates = useMemo(() => {
+    const matcher = makeBrandMatcher(brandTerms)
+    const byQuery = new Map<string, { clicks: number; impressions: number; weightedPos: number }>()
+    for (const row of queryRows) {
+      if (row.impressions <= 0 || matcher(row.query)) continue
+      const agg = byQuery.get(row.query) ?? { clicks: 0, impressions: 0, weightedPos: 0 }
+      agg.clicks += row.clicks
+      agg.impressions += row.impressions
+      agg.weightedPos += row.position * row.impressions
+      byQuery.set(row.query, agg)
+    }
+    return [...byQuery.entries()]
+      .map(([query, a]) => ({
+        query,
+        ctr: a.clicks / a.impressions,
+        impressions: a.impressions,
+        position: a.weightedPos / a.impressions,
+      }))
+      .filter((c) => c.position <= 5 && c.impressions >= 20 && c.ctr >= 0.2)
+      .sort((a, b) => b.ctr - a.ctr)
+      .slice(0, 8)
+  }, [queryRows, brandTerms])
 
   const shown: Opportunity[] = useMemo(
     () => (onlyMeaningful ? all.filter((o) => o.confidence !== 'low') : all),
@@ -181,10 +237,53 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
             بازگرداندن حدس خودکار
           </button>
         </div>
+
+        {brandCandidates.length > 0 && (
+          <div className="opp-suggest">
+            <div className="field-label">شاید این‌ها برند شما باشند</div>
+            <p className="filter-hint">
+              این کوئری‌ها در رتبه‌های صدر CTR غیرعادی بالایی دارند — نشانه‌ی معمولِ
+              جست‌وجوی برند. روی هرکدام بزنید تا در کادر بالا بیاید، بعد فقط
+              <strong> بخشِ نام برند</strong> را نگه دارید و «افزودن» را بزنید.
+            </p>
+            <div className="filters-bar opp-chips">
+              {brandCandidates.map((c) => (
+                <button
+                  key={c.query}
+                  className="opp-suggest-chip"
+                  onClick={() => setDraftTerm(c.query)}
+                  title={`CTR ${formatCtr(c.ctr)} در موقعیت ${formatPosition(c.position)} با ${formatNumber(c.impressions)} نمایش`}
+                >
+                  {c.query}
+                  <span className="opp-suggest-ctr">{formatCtr(c.ctr)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* ---------- دروازه‌ی تأیید ---------- */}
+      {(!confirmed || stale) && (
+        <div className={`alert ${stale ? 'alert-warn' : 'alert-info'}`} role="status">
+          <div className="alert-title">
+            {stale ? 'کلمات برند عوض شد' : 'قبل از دیدن فرصت‌ها، کلمات برند را کامل کنید'}
+          </div>
+          <p className="alert-body">
+            {stale
+              ? 'فهرست پایین هنوز بر اساس کلمات قبلی است. برای اعمال تغییر، دکمه را بزنید.'
+              : 'ابزار فقط می‌تواند بخش لاتین برند را از دامنه حدس بزند؛ نام فارسی برند را از دامنه نمی‌شود درآورد. اگر کوئری‌های برند در محاسبه بمانند، سقف انتظار کاذب بالا می‌رود و نتیجه گمراه‌کننده می‌شود. کلمات بالا را کامل کنید و بعد این دکمه را بزنید.'}
+          </p>
+          <div className="alert-actions">
+            <button className="btn btn-primary" onClick={applyTerms}>
+              {stale ? 'به‌روزرسانی فرصت‌ها' : 'نمایش فرصت‌ها'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ---------- وضعیت منحنی ---------- */}
-      {!curve.available ? (
+      {confirmed && (!curve.available ? (
         <div className="alert alert-warn" role="status">
           <div className="alert-title">منحنی CTR ساخته نشد</div>
           <p className="alert-body">
@@ -254,17 +353,17 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
             سطر را با نگه‌داشتن ماوس روی ٭ می‌بینید.
           </p>
         </details>
-      )}
+      ))}
 
       {/* ---------- فهرست فرصت‌ها ---------- */}
-      {curve.available && all.length === 0 && (
+      {confirmed && curve.available && all.length === 0 && (
         <div className="empty-state">
           هیچ صفحه‌ای کمتر از انتظارِ موقعیتش کلیک نگرفته. یعنی CTR صفحه‌های شما با رتبه‌شان
           هماهنگ است و برای رشد باید سراغ بهبود رتبه بروید، نه عنوان و توضیحات.
         </div>
       )}
 
-      {curve.available && all.length > 0 && (
+      {confirmed && curve.available && all.length > 0 && (
         <>
           <div className="opp-summary">
             <div className="stat">
@@ -342,17 +441,23 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
                   const pageQueries = queriesByPage.get(o.page) ?? []
                   return [
                     <tr key={o.page} className={open ? 'opp-row-open' : undefined}>
-                      <td className="cell-page" title={o.page}>
-                        <button
-                          className="opp-expand"
-                          onClick={() => setExpanded(open ? null : o.page)}
-                          aria-expanded={open}
-                        >
-                          <span className="opp-caret" aria-hidden="true">
+                      <td className="cell-page">
+                        <div className="opp-page-cell">
+                          <button
+                            className="opp-caret"
+                            onClick={() => setExpanded(open ? null : o.page)}
+                            aria-expanded={open}
+                            title={
+                              open
+                                ? 'بستن کوئری‌های این صفحه'
+                                : 'دیدن کوئری‌هایی که این صفحه با آن‌ها دیده شده'
+                            }
+                            aria-label="کوئری‌های این صفحه"
+                          >
                             {open ? '▾' : '▸'}
-                          </span>
-                          <span className="ltr">{o.page}</span>
-                        </button>
+                          </button>
+                          <PageLink url={o.page} />
+                        </div>
                       </td>
                       <td className="cell-num">{formatNumber(o.clicks)}</td>
                       <td className="cell-num">{formatNumber(o.impressions)}</td>

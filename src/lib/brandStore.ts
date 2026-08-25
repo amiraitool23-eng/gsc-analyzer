@@ -28,3 +28,40 @@ export function saveBrandTerms(siteUrl: string, terms: readonly string[]): void 
     /* بدون ذخیره هم همان نشست کار می‌کند */
   }
 }
+
+/**
+ * کلمات برندی که کاربر **تأیید کرده** و فرصت‌ها بر اساسشان حساب شده.
+ *
+ * جدا از فهرست بالا نگه داشته می‌شود، چون حدسِ خودکار هرگز کامل نیست: نام فارسی
+ * برند از دامنه درنمی‌آید. تا وقتی کاربر یک بار تأیید نکرده، فهرست فرصت‌ها اصلاً
+ * ساخته نمی‌شود؛ و اگر بعداً کلمه‌ای عوض شود، اختلاف این دو فهرست نشان می‌دهد که
+ * نتیجه‌ی روی صفحه کهنه شده است.
+ */
+const CONFIRMED_PREFIX = 'gsc-analyzer:brand-confirmed:'
+
+export function loadConfirmedTerms(siteUrl: string): string[] | null {
+  try {
+    const raw = localStorage.getItem(CONFIRMED_PREFIX + siteUrl)
+    if (raw === null) return null
+    const parsed = JSON.parse(raw) as unknown
+    return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : null
+  } catch {
+    return null
+  }
+}
+
+export function saveConfirmedTerms(siteUrl: string, terms: readonly string[]): void {
+  try {
+    localStorage.setItem(CONFIRMED_PREFIX + siteUrl, JSON.stringify(terms))
+  } catch {
+    /* بدون ذخیره هم همان نشست کار می‌کند */
+  }
+}
+
+/** دو فهرست کلمه، بدون توجه به ترتیب، یکی‌اند؟ */
+export function sameTerms(a: readonly string[], b: readonly string[]): boolean {
+  if (a.length !== b.length) return false
+  const sortedA = [...a].sort()
+  const sortedB = [...b].sort()
+  return sortedA.every((t, i) => t === sortedB[i])
+}

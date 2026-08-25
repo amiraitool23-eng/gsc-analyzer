@@ -1231,33 +1231,91 @@ table.data-table {
   color: var(--text-faint);
 }
 
-.opp-expand {
+.opp-page-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* فلشِ باز کردن کوئری‌ها: هدف کلیک واقعی، نه یک مثلث ریز */
+.opp-caret {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: inherit;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.opp-caret:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.opp-caret[aria-expanded='true'] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.page-link {
+  color: var(--primary);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.page-link:hover {
+  text-decoration: underline;
+}
+
+.opp-suggest {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opp-suggest .filter-hint {
+  margin: 0;
+}
+
+.opp-suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  padding: 5px 12px;
   font: inherit;
-  text-align: start;
+  font-size: 13px;
+  color: var(--text);
   cursor: pointer;
   max-width: 100%;
 }
 
-.opp-expand:hover {
-  color: var(--primary);
+.opp-suggest-chip:hover {
+  border-style: solid;
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 
-.opp-expand .ltr {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.opp-caret {
+.opp-suggest-ctr {
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .opp-row-open {
