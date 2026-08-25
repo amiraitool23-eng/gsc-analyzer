@@ -8,6 +8,7 @@ import { computeTotals, formatCtr, formatNumber, formatPosition } from '../lib/m
 import { FilterPanel } from './FilterPanel'
 import { DeltaCount, DeltaPosition } from './Delta'
 import { CoverageNotice } from './CoverageNotice'
+import { PageLink } from './PageLink'
 import { SummaryCards } from './SummaryCards'
 
 /** سطری که هر دو نما را پوشش می‌دهد؛ در نمای صفحه‌محور `query` وجود ندارد. */
@@ -268,8 +269,8 @@ export function DataTable({ rows, siteTotals, variant, previousRows }: Props) {
             <tbody>
               {visible.map((row, i) => (
                 <tr key={`${safePage}-${i}-${row.page}-${row.query ?? ''}`}>
-                  <td className="cell-page" title={row.page}>
-                    {row.page}
+                  <td className="cell-page">
+                    <PageLink url={row.page} />
                   </td>
                   {variant === 'query' && <td className="cell-query">{row.query}</td>}
                   <td className="cell-num">{formatNumber(row.clicks)}</td>
