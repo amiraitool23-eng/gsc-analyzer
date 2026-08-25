@@ -224,7 +224,17 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
                 {curve.points.map((p) => (
                   <tr key={p.position}>
                     <td className="cell-num">{formatPosition(p.position)}</td>
-                    <td className="cell-num">{formatCtr(p.ctr)}</td>
+                    <td className="cell-num">
+                      {formatCtr(p.ctr)}
+                      {p.pooled && (
+                        <span
+                          className="opp-pooled"
+                          title={`خام ${formatCtr(p.rawCtr)} — روی داده‌ی کم ایستاده بود و با بازه‌های مجاور ادغام شد`}
+                        >
+                          ٭
+                        </span>
+                      )}
+                    </td>
                     <td className="cell-num">{formatNumber(p.impressions)}</td>
                     <td className="cell-num">{formatNumber(p.rows)}</td>
                   </tr>
@@ -236,6 +246,12 @@ export function OpportunitiesPanel({ siteUrl, pageRows, queryRows }: Props) {
             هر سطر یک بازه‌ی رتبه است: CTR آن از تقسیم کل کلیک بر کل نمایشِ همان بازه
             می‌آید (نه میانگین ستون CTR). CTR انتظاری هر صفحه با درون‌یابی بین همین
             نقطه‌ها به دست می‌آید.
+          </p>
+          <p className="filter-hint">
+            سطرهای علامت‌دار (٭) با بازه‌های مجاورشان ادغام شده‌اند. دلیلش این است که
+            CTR با بدتر شدن رتبه نباید بالا برود؛ بازه‌ی کم‌نمایشی که روی چند کلیک
+            ایستاده می‌تواند خلاف این را نشان دهد و آن نویز است، نه سیگنال. عدد خام هر
+            سطر را با نگه‌داشتن ماوس روی ٭ می‌بینید.
           </p>
         </details>
       )}
