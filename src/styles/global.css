@@ -1122,3 +1122,176 @@ table.data-table {
     flex: 1 1 100%;
   }
 }
+
+/* ---------- فرصت‌های بهبود CTR ---------- */
+
+.opp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.opp-card .card-desc {
+  margin: 0;
+}
+
+.opp-brand {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.opp-brand .filter-hint {
+  margin: 0;
+}
+
+.opp-chips {
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.opp-brand-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.opp-brand-add .filter-input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.opp-curve > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.opp-curve-table {
+  max-width: 420px;
+}
+
+.opp-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.opp-controls {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.opp-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.opp-missed {
+  white-space: nowrap;
+}
+
+.opp-gap {
+  display: block;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.opp-conf {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.conf-high {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.conf-medium {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.conf-low {
+  background: var(--surface-2);
+  color: var(--text-faint);
+}
+
+.opp-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.opp-expand:hover {
+  color: var(--primary);
+}
+
+.opp-expand .ltr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opp-caret {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.opp-row-open {
+  background: var(--primary-soft);
+}
+
+.opp-detail-row > td {
+  background: var(--surface-2);
+  padding: 0;
+}
+
+.opp-detail {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.opp-detail .filter-hint {
+  margin: 0;
+}
+
+.opp-brand-tag {
+  display: inline-block;
+  margin-inline-start: 8px;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.opp-caveat {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin: 0;
+}

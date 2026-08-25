@@ -3,6 +3,7 @@ import { ClientIdSetup } from './components/ClientIdSetup'
 import { ConnectPanel } from './components/ConnectPanel'
 import { DataTable } from './components/DataTable'
 import { ErrorAlert } from './components/ErrorAlert'
+import { OpportunitiesPanel } from './components/OpportunitiesPanel'
 import { PropertyPicker } from './components/PropertyPicker'
 import { TrendPanel } from './components/TrendPanel'
 import { useAuth } from './hooks/useAuth'
@@ -30,7 +31,7 @@ export default function App() {
   const [clientId, setClientId] = useState(getClientId())
   const [editingClientId, setEditingClientId] = useState(false)
   // پیش‌فرض صفحه‌محور: تنها نمایی که اعدادش با آمار واقعی سایت می‌خواند
-  const [view, setView] = useState<'page' | 'query'>('page')
+  const [view, setView] = useState<'page' | 'query' | 'opportunities'>('page')
   const [comparing, setComparing] = useState(false)
   const [period, setPeriod] = useState<PeriodId>(DEFAULT_PERIOD)
 
@@ -300,6 +301,15 @@ export default function App() {
                         کوئری‌محور
                         <span className="tab-hint">عبارت‌های جست‌وجو</span>
                       </button>
+                      <button
+                        role="tab"
+                        aria-selected={view === 'opportunities'}
+                        className="tab"
+                        onClick={() => setView('opportunities')}
+                      >
+                        فرصت‌ها
+                        <span className="tab-hint">کمتر از انتظار کلیک می‌گیرند</span>
+                      </button>
                     </div>
 
                     {comparing &&
@@ -326,8 +336,16 @@ export default function App() {
                       previous={comparing ? prevReport.report?.dailyRows : undefined}
                     />
 
-                    {view === 'page' ? (
-                      report.report.pageRows ? (
+                    {view === 'opportunities' && (
+                      <OpportunitiesPanel
+                        siteUrl={selectedSite}
+                        pageRows={report.report.pageRows}
+                        queryRows={report.report.rows}
+                      />
+                    )}
+
+                    {view === 'page' &&
+                      (report.report.pageRows ? (
                         <DataTable
                           key="page"
                           rows={report.report.pageRows}
@@ -344,8 +362,9 @@ export default function App() {
                             بزنید.
                           </div>
                         </div>
-                      )
-                    ) : (
+                      ))}
+
+                    {view === 'query' && (
                       <DataTable
                         key="query"
                         rows={report.report.rows}
