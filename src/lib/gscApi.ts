@@ -1,4 +1,5 @@
 import type {
+  DailyRow,
   DateRange,
   FetchProgress,
   GscPageRow,
@@ -223,6 +224,27 @@ export function fetchAllRows(
     }),
     onProgress,
   )
+}
+
+/**
+ * سری زمانی روزانه: فقط بُعد `date`.
+ *
+ * بدون بُعد page/query، پس مثل آمار کل سایت کامل است — کلیک‌های کوئری‌های ناشناس
+ * هم در آن هستند. حداکثر ۳۶۶ سطر برمی‌گردد (۱۲ ماه)، پس یک درخواست کافی است و
+ * صفحه‌بندی عملاً هیچ‌وقت لازم نمی‌شود؛ با این حال از همان مسیر امن رد می‌شود.
+ */
+export function fetchDailyRows(
+  siteUrl: string,
+  range: DateRange,
+  options: RequestOptions,
+): Promise<DailyRow[]> {
+  return fetchPaginated(siteUrl, range, ['date'], options, (row) => ({
+    date: row.keys?.[0] ?? '',
+    clicks: row.clicks ?? 0,
+    impressions: row.impressions ?? 0,
+    ctr: row.ctr ?? 0,
+    position: row.position ?? 0,
+  }))
 }
 
 /**

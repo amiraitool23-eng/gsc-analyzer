@@ -4,6 +4,7 @@ import { ConnectPanel } from './components/ConnectPanel'
 import { DataTable } from './components/DataTable'
 import { ErrorAlert } from './components/ErrorAlert'
 import { PropertyPicker } from './components/PropertyPicker'
+import { TrendPanel } from './components/TrendPanel'
 import { useAuth } from './hooks/useAuth'
 import { useReport } from './hooks/useReport'
 import { useSites } from './hooks/useSites'
@@ -319,6 +320,11 @@ export default function App() {
                         onSignIn={() => void auth.signIn('consent')}
                       />
                     )}
+
+                    <TrendPanel
+                      rows={report.report.dailyRows}
+                      previous={comparing ? prevReport.report?.dailyRows : undefined}
+                    />
 
                     {view === 'page' ? (
                       report.report.pageRows ? (
