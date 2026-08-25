@@ -329,6 +329,7 @@ export default function App() {
                     {view === 'page' ? (
                       report.report.pageRows ? (
                         <DataTable
+                          key="page"
                           rows={report.report.pageRows}
                           siteTotals={report.report.siteTotals}
                           variant="page"
@@ -346,6 +347,7 @@ export default function App() {
                       )
                     ) : (
                       <DataTable
+                        key="query"
                         rows={report.report.rows}
                         siteTotals={report.report.siteTotals}
                         variant="query"
