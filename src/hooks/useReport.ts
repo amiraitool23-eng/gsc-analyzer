@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DateRange, FetchProgress, ReportData } from '../types'
 import { readReport, writeReport } from '../lib/cache'
-import { fetchAllPageRows, fetchAllRows, fetchSiteTotals } from '../lib/gscApi'
+import {
+  fetchAllPageRows,
+  fetchAllRows,
+  fetchDailyRows,
+  fetchSiteTotals,
+} from '../lib/gscApi'
 import { GscError, isGscError, networkError } from '../lib/errors'
 
 export type ReportStatus = 'idle' | 'loadingCache' | 'fetching' | 'ready' | 'error'
@@ -72,19 +77,21 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           // هر دو کوچک‌اند، پس بدون دانلود دوباره‌ی کل سطرهای کوئری تکمیلشان می‌کنیم.
           const needsTotals = !cached.siteTotals
           const needsPages = !cached.pageRows
-          if ((needsTotals || needsPages) && token) {
+          const needsDaily = !cached.dailyRows
+          if ((needsTotals || needsPages || needsDaily) && token) {
             try {
               const req = { token, signal: controller.signal }
-              const [totals, pageRows] = await Promise.all([
+              const [totals, pageRows, dailyRows] = await Promise.all([
                 needsTotals ? fetchSiteTotals(siteUrl, range, req) : cached.siteTotals,
                 needsPages ? fetchAllPageRows(siteUrl, range, req) : cached.pageRows,
+                needsDaily ? fetchDailyRows(siteUrl, range, req) : cached.dailyRows,
               ])
               if (!active) return
-              const filled = { ...cached, siteTotals: totals, pageRows }
+              const filled = { ...cached, siteTotals: totals, pageRows, dailyRows }
               setReport(filled)
               void writeReport(filled)
             } catch {
-              /* بدون این دو هم گزارش کوئری‌محور قابل استفاده است */
+              /* بدون این‌ها هم گزارش کوئری‌محور قابل استفاده است */
             }
           }
           return
@@ -110,11 +117,13 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
         // اول آمار کل سایت (یک درخواست سریع) تا اگر گرفتن سطرها طول کشید،
         // عددِ مرجع از قبل آماده باشد. شکستش نباید کل گزارش را از کار بیندازد.
         let siteTotals: Awaited<ReturnType<typeof fetchSiteTotals>> | undefined
+        let dailyRows: Awaited<ReturnType<typeof fetchDailyRows>> | undefined
         try {
-          siteTotals = await fetchSiteTotals(siteUrl, range, {
-            token,
-            signal: controller.signal,
-          })
+          const req = { token, signal: controller.signal }
+          ;[siteTotals, dailyRows] = await Promise.all([
+            fetchSiteTotals(siteUrl, range, req),
+            fetchDailyRows(siteUrl, range, req),
+          ])
         } catch (e) {
           if (e instanceof DOMException && e.name === 'AbortError') throw e
           if (isGscError(e) && e.kind === 'auth') throw e
@@ -145,6 +154,7 @@ export function useReport({ siteUrl, range, token, onAuthExpired }: Params): Rep
           range,
           rows,
           pageRows,
+          dailyRows,
           siteTotals,
           fetchedAt: Date.now(),
         }

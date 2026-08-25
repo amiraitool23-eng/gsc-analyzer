@@ -21,6 +21,16 @@ export interface GscPageRow {
   position: number
 }
 
+/** یک روز از سری زمانی (بُعد `date`) — آمار کل سایت در آن روز */
+export interface DailyRow {
+  /** YYYY-MM-DD */
+  date: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
+}
+
 /** یک سطر داده‌ی searchAnalytics با ابعاد page + query */
 export interface GscRow extends GscPageRow {
   query: string
@@ -56,6 +66,8 @@ export interface ReportData {
   rows: GscRow[]
   /** نمای صفحه‌محور: فقط بُعد page. در کش‌های قدیمی نیست و موقع خواندن تکمیل می‌شود. */
   pageRows?: GscPageRow[]
+  /** سری زمانی روزانه (بُعد date). حداکثر ۳۶۶ سطر، پس همیشه سبک است. */
+  dailyRows?: DailyRow[]
   /** آمار کل سایت؛ ممکن است نباشد (کش قدیمی یا خطای همان یک درخواست) */
   siteTotals?: SiteTotals
   /** زمان دریافت داده از گوگل (میلی‌ثانیه) */

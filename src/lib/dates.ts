@@ -117,6 +117,19 @@ export function formatDateFa(iso: string): string {
   }
 }
 
+/** تاریخ کوتاه برای برچسب محور نمودار: «۵ مرداد» */
+export function formatDateShortFa(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return iso
+  try {
+    return new Intl.DateTimeFormat('fa-IR', { month: 'short', day: 'numeric' }).format(
+      new Date(y, m - 1, d),
+    )
+  } catch {
+    return iso
+  }
+}
+
 /** «۲ ساعت پیش» و مانند آن، برای نمایش زمان آخرین به‌روزرسانی کش */
 export function formatRelativeFa(timestamp: number, now: number = Date.now()): string {
   const diffSec = Math.round((timestamp - now) / 1000)
