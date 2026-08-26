@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { GscPageRow } from '../types'
 import type { CrawlPage } from '../lib/crawlCsv'
-import { parseCrawlCsv } from '../lib/crawlCsv'
 import { joinCrawl, pagesWithoutImpressions } from '../lib/crawlJoin'
 import type { LoadedCrawl } from '../lib/crawlStore'
-import { deleteCrawl, readCrawl, writeCrawl } from '../lib/crawlStore'
+import type { CrawlStatus } from '../hooks/useCrawl'
 import { formatNumber } from '../lib/metrics'
 import { formatRelativeFa } from '../lib/dates'
 import { PageLink } from './PageLink'
@@ -32,64 +31,15 @@ const GOOD_MATCH_RATE = 0.9
 interface Props {
   siteUrl: string
   pageRows: GscPageRow[] | undefined
+  crawl: LoadedCrawl | null
+  status: CrawlStatus
+  onImport: (file: File) => void
+  onRemove: () => void
 }
 
-type Status = { kind: 'idle' } | { kind: 'reading' } | { kind: 'error'; message: string }
-
-export function CrawlPanel({ siteUrl, pageRows }: Props) {
-  const [crawl, setCrawl] = useState<LoadedCrawl | null>(null)
-  const [status, setStatus] = useState<Status>({ kind: 'idle' })
+export function CrawlPanel({ siteUrl, pageRows, crawl, status, onImport, onRemove }: Props) {
   const [visible, setVisible] = useState(50)
   const fileInput = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    let alive = true
-    setCrawl(null)
-    setStatus({ kind: 'idle' })
-    setVisible(50)
-    void readCrawl(siteUrl).then((loaded) => {
-      if (alive) setCrawl(loaded)
-    })
-    return () => {
-      alive = false
-    }
-  }, [siteUrl])
-
-  const handleFile = useCallback(
-    async (file: File) => {
-      setStatus({ kind: 'reading' })
-      try {
-        const text = await file.text()
-        const parsed = parseCrawlCsv(text)
-
-        if (parsed.missingColumns.length > 0 || parsed.pages.length === 0) {
-          setStatus({
-            kind: 'error',
-            message:
-              'ستون آدرس در این فایل پیدا نشد. مطمئن شوید خروجی تب Internal است (نه Bulk Export) و فرمتش CSV است.',
-          })
-          return
-        }
-
-        const importedAt = Date.now()
-        await writeCrawl(siteUrl, parsed, file.name, importedAt)
-        setCrawl({ ...parsed, fileName: file.name, importedAt })
-        setStatus({ kind: 'idle' })
-        setVisible(50)
-      } catch {
-        setStatus({ kind: 'error', message: 'خواندن فایل ممکن نشد. دوباره امتحان کنید.' })
-      }
-    },
-    [siteUrl],
-  )
-
-  const handleRemove = useCallback(async () => {
-    await deleteCrawl(siteUrl)
-    setCrawl(null)
-    // خطای فایل قبلی نباید روی صفحه‌ی خالی بماند
-    setStatus({ kind: 'idle' })
-    if (fileInput.current) fileInput.current.value = ''
-  }, [siteUrl])
 
   const report = useMemo(
     () => (crawl && pageRows ? joinCrawl(pageRows, crawl, siteUrl) : null),
@@ -110,7 +60,7 @@ export function CrawlPanel({ siteUrl, pageRows }: Props) {
         className="visually-hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
-          if (file) void handleFile(file)
+          if (file) onImport(file)
         }}
       />
       <button
@@ -181,7 +131,10 @@ export function CrawlPanel({ siteUrl, pageRows }: Props) {
             </span>
             <div className="toolbar-spacer" />
             {picker}
-            <button className="btn btn-ghost btn-sm" onClick={() => void handleRemove()}>
+            <button className="btn btn-ghost btn-sm" onClick={() => {
+                onRemove()
+                if (fileInput.current) fileInput.current.value = ''
+              }}>
               حذف کراول
             </button>
           </div>

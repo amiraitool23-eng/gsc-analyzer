@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ClientIdSetup } from './components/ClientIdSetup'
 import { ConnectPanel } from './components/ConnectPanel'
-import { CrawlPanel } from './components/CrawlPanel'
+import { ContentTab } from './components/ContentTab'
 import { DataTable } from './components/DataTable'
 import { ErrorAlert } from './components/ErrorAlert'
 import { OpportunitiesPanel } from './components/OpportunitiesPanel'
@@ -349,7 +349,11 @@ export default function App() {
                     )}
 
                     {view === 'content' && (
-                      <CrawlPanel siteUrl={selectedSite} pageRows={report.report.pageRows} />
+                      <ContentTab
+                        siteUrl={selectedSite}
+                        pageRows={report.report.pageRows}
+                        queryRows={report.report.rows}
+                      />
                     )}
 
                     {view === 'opportunities' && (
