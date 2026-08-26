@@ -1388,3 +1388,27 @@ table.data-table {
   gap: 4px;
   font-size: 13px;
 }
+
+/* ---------- کمبودهای محتوا ---------- */
+
+.gap-query-cell {
+  align-items: flex-start;
+}
+
+.gap-coverage {
+  display: inline-block;
+  min-width: 44px;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  margin-inline-end: 8px;
+  font-size: 12px;
+  text-align: center;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.gap-near-title {
+  color: var(--text-muted);
+  font-size: 13px;
+  unicode-bidi: plaintext;
+}
