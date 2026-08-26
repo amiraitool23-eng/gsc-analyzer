@@ -1,3 +1,4 @@
+import { foldDigits } from './faDigits'
 import type { ComparedRow } from './compare'
 
 /**
@@ -94,8 +95,6 @@ export function fieldSpec(field: FilterField): FieldSpec {
   return FILTER_FIELDS.find((f) => f.id === field) ?? FILTER_FIELDS[0]
 }
 
-const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
-const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩'
 
 /**
  * تبدیل ورودی کاربر به عدد.
@@ -104,10 +103,8 @@ const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩'
  * جداکننده‌ی هزارگان (، یا ٬) و ممیز فارسی (٫) هم باید نرمال شوند.
  */
 export function parseNumberFa(input: string): number | null {
-  const normalized = input
+  const normalized = foldDigits(input)
     .trim()
-    .replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d)))
     .replace(/٫/g, '.')
     .replace(/[,٬\s]/g, '')
     .replace(/٪|%/g, '')

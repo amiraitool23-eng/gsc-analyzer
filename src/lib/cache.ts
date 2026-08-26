@@ -1,13 +1,10 @@
 /**
- * کش داده در IndexedDB — همه چیز روی همین مرورگر می‌ماند و جایی ارسال نمی‌شود.
- * هدف: بعد از رفرش صفحه لازم نباشد دوباره چند ده هزار سطر از گوگل گرفته شود.
- * کلید هر رکورد: پراپرتی + بازه‌ی تاریخ.
+ * کش گزارش‌های سرچ کنسول در IndexedDB — همه چیز روی همین مرورگر می‌ماند و جایی
+ * ارسال نمی‌شود. هدف: بعد از رفرش صفحه لازم نباشد دوباره چند ده هزار سطر از
+ * گوگل گرفته شود. کلید هر رکورد: پراپرتی + بازه‌ی تاریخ.
  */
 import type { DailyRow, DateRange, GscPageRow, GscRow, ReportData, SiteTotals } from '../types'
-
-const DB_NAME = 'gsc-analyzer'
-const DB_VERSION = 1
-const STORE = 'reports'
+import { STORE_REPORTS, clearAllStores, runTx } from './idb'
 
 export function cacheKey(siteUrl: string, range: DateRange): string {
   return `${siteUrl}|${range.startDate}|${range.endDate}`
@@ -26,69 +23,12 @@ interface StoredReport {
   fetchedAt: number
 }
 
-let dbPromise: Promise<IDBDatabase | null> | null = null
-
-function openDb(): Promise<IDBDatabase | null> {
-  if (dbPromise) return dbPromise
-
-  dbPromise = new Promise<IDBDatabase | null>((resolve) => {
-    if (typeof indexedDB === 'undefined') {
-      resolve(null)
-      return
-    }
-    let request: IDBOpenDBRequest
-    try {
-      request = indexedDB.open(DB_NAME, DB_VERSION)
-    } catch {
-      resolve(null)
-      return
-    }
-    request.onupgradeneeded = () => {
-      const db = request.result
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'key' })
-      }
-    }
-    request.onsuccess = () => resolve(request.result)
-    // در حالت ناشناس یا وقتی کاربر ذخیره‌سازی را بسته باشد، بدون کش ادامه می‌دهیم
-    request.onerror = () => resolve(null)
-    request.onblocked = () => resolve(null)
-  })
-
-  return dbPromise
-}
-
-function runTx<T>(
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>,
-): Promise<T | null> {
-  return openDb().then(
-    (db) =>
-      new Promise<T | null>((resolve) => {
-        if (!db) {
-          resolve(null)
-          return
-        }
-        let request: IDBRequest<T>
-        try {
-          const tx = db.transaction(STORE, mode)
-          request = action(tx.objectStore(STORE))
-        } catch {
-          resolve(null)
-          return
-        }
-        request.onsuccess = () => resolve(request.result ?? null)
-        request.onerror = () => resolve(null)
-      }),
-  )
-}
-
 /** خواندن گزارش کش‌شده؛ اگر نبود یا IndexedDB در دسترس نبود، null */
 export async function readReport(
   siteUrl: string,
   range: DateRange,
 ): Promise<ReportData | null> {
-  const stored = await runTx<StoredReport>('readonly', (store) =>
+  const stored = await runTx<StoredReport>(STORE_REPORTS, 'readonly', (store) =>
     store.get(cacheKey(siteUrl, range)) as IDBRequest<StoredReport>,
   )
   if (!stored) return null
@@ -116,10 +56,10 @@ export async function writeReport(report: ReportData): Promise<void> {
     siteTotals: report.siteTotals,
     fetchedAt: report.fetchedAt,
   }
-  await runTx('readwrite', (store) => store.put(stored) as IDBRequest<IDBValidKey>)
+  await runTx(STORE_REPORTS, 'readwrite', (store) => store.put(stored) as IDBRequest<IDBValidKey>)
 }
 
-/** پاک کردن کل کش — برای دکمه‌ی «پاک کردن داده‌های محلی» */
+/** پاک کردن همه‌ی داده‌های محلی: هم گزارش‌ها و هم کراول وارد شده */
 export async function clearCache(): Promise<void> {
-  await runTx('readwrite', (store) => store.clear() as IDBRequest<undefined>)
+  await clearAllStores()
 }

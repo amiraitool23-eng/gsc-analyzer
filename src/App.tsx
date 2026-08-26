@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { ClientIdSetup } from './components/ClientIdSetup'
 import { ConnectPanel } from './components/ConnectPanel'
+import { CrawlPanel } from './components/CrawlPanel'
 import { DataTable } from './components/DataTable'
 import { ErrorAlert } from './components/ErrorAlert'
 import { OpportunitiesPanel } from './components/OpportunitiesPanel'
@@ -31,7 +32,7 @@ export default function App() {
   const [clientId, setClientId] = useState(getClientId())
   const [editingClientId, setEditingClientId] = useState(false)
   // پیش‌فرض صفحه‌محور: تنها نمایی که اعدادش با آمار واقعی سایت می‌خواند
-  const [view, setView] = useState<'page' | 'query' | 'opportunities'>('page')
+  const [view, setView] = useState<'page' | 'query' | 'opportunities' | 'content'>('page')
   const [comparing, setComparing] = useState(false)
   const [period, setPeriod] = useState<PeriodId>(DEFAULT_PERIOD)
 
@@ -310,6 +311,15 @@ export default function App() {
                         فرصت‌ها
                         <span className="tab-hint">کمتر از انتظار کلیک می‌گیرند</span>
                       </button>
+                      <button
+                        role="tab"
+                        aria-selected={view === 'content'}
+                        className="tab"
+                        onClick={() => setView('content')}
+                      >
+                        محتوای سایت
+                        <span className="tab-hint">از خروجی کراول</span>
+                      </button>
                     </div>
 
                     {comparing &&
@@ -331,10 +341,16 @@ export default function App() {
                       />
                     )}
 
-                    <TrendPanel
-                      rows={report.report.dailyRows}
-                      previous={comparing ? prevReport.report?.dailyRows : undefined}
-                    />
+                    {view !== 'content' && (
+                      <TrendPanel
+                        rows={report.report.dailyRows}
+                        previous={comparing ? prevReport.report?.dailyRows : undefined}
+                      />
+                    )}
+
+                    {view === 'content' && (
+                      <CrawlPanel siteUrl={selectedSite} pageRows={report.report.pageRows} />
+                    )}
 
                     {view === 'opportunities' && (
                       <OpportunitiesPanel
