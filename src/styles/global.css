@@ -1359,3 +1359,32 @@ table.data-table {
   margin-inline-start: 4px;
   cursor: help;
 }
+
+/* ---------- ایمپورت کراول ---------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.crawl-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.crawl-sample {
+  margin: 8px 0 0;
+  padding-inline-start: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
