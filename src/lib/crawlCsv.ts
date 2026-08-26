@@ -1,3 +1,4 @@
+import { foldDigits } from './faDigits'
 import { normalizeUrlKey } from './urlKey'
 
 /**
@@ -72,14 +73,19 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   wordCount: ['word count', 'word count 1'],
   canonical: ['canonical link element 1', 'canonical link element', 'canonical'],
   contentType: ['content type', 'content'],
-  clicks: ['clicks', 'gsc clicks', 'search console clicks'],
-  impressions: ['impressions', 'gsc impressions', 'search console impressions'],
 }
 
 /** ستون‌هایی که بدونشان تحلیل بی‌معنی است */
 const REQUIRED = ['url']
 
-const header = (cell: string) => cell.trim().toLowerCase().replace(/\s+/g, ' ')
+/**
+ * نام ستون را به شکل قابل مقایسه درمی‌آورد.
+ *
+ * `foldDigits` اینجا حیاتی است: Screaming Frog روی ویندوز فارسی هدرها را
+ * محلی‌سازی می‌کند و `Title ۱` می‌نویسد. بدون تبدیل رقم، ستون عنوان پیدا نمی‌شود
+ * و فایل **بی‌سروصدا** با عنوان‌های خالی خوانده می‌شود.
+ */
+const header = (cell: string) => foldDigits(cell).trim().toLowerCase().replace(/\s+/g, ' ')
 
 export interface CrawlPage {
   /** آدرس همان‌طور که در فایل بود — برای نمایش و لینک */
@@ -112,9 +118,16 @@ export interface CrawlImport {
   duplicateKeys: number
 }
 
-function toInt(value: string | undefined): number | null {
+/**
+ * عدد یک سلول. مقادیر هم می‌توانند فارسی باشند: در همان فایل، `Word Count`
+ * لاتین است ولی `Position` به شکل `۱۲٫۲۴۰` می‌آید (`٫` جداکننده‌ی اعشار فارسی).
+ */
+function toNumber(value: string | undefined): number | null {
   if (value === undefined) return null
-  const cleaned = value.replace(/[,٬،\s]/g, '').trim()
+  const cleaned = foldDigits(value)
+    .replace(/٫/g, '.')
+    .replace(/[,٬،\s]/g, '')
+    .trim()
   if (cleaned === '') return null
   const n = Number(cleaned)
   return Number.isFinite(n) ? n : null
@@ -193,8 +206,8 @@ export function parseCrawlCsv(text: string): CrawlImport {
       title: cell(row, 'title') ?? '',
       metaDescription: cell(row, 'metaDescription') ?? '',
       h1: cell(row, 'h1') ?? '',
-      wordCount: toInt(cell(row, 'wordCount')),
-      status: toInt(cell(row, 'status')),
+      wordCount: toNumber(cell(row, 'wordCount')),
+      status: toNumber(cell(row, 'status')),
       indexability: cell(row, 'indexability') ?? '',
       canonical: cell(row, 'canonical') ?? '',
     }

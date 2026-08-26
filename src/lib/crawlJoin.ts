@@ -1,6 +1,6 @@
 import type { GscPageRow } from '../types'
 import type { CrawlImport, CrawlPage } from './crawlCsv'
-import { looseUrlKey, normalizeUrlKey } from './urlKey'
+import { inPropertyScope, looseUrlKey, normalizeUrlKey } from './urlKey'
 
 /**
  * چسباندن دادهٔ سرچ کنسول به خروجی کراول.
@@ -30,6 +30,11 @@ export interface JoinReport {
   unmatchedSample: string[]
   /** صفحه‌هایی که کراول شده‌اند ولی در سرچ کنسول هیچ نمایشی نگرفته‌اند */
   crawlOnly: number
+  /**
+   * صفحه‌های کراول‌شده‌ای که اصلاً مال این پراپرتی نیستند (میزبان یا مسیر دیگر).
+   * این‌ها کنار گذاشته می‌شوند، نه اینکه «بدون نمایش» شمرده شوند.
+   */
+  outOfScope: number
 }
 
 /** سطر صفحه‌محور سرچ کنسول، به‌علاوهٔ چیزی که کراول دربارهٔ همان صفحه می‌داند */
@@ -42,7 +47,9 @@ const SAMPLE_SIZE = 10
 export function joinCrawl(
   pageRows: readonly GscPageRow[],
   crawl: CrawlImport,
+  siteUrl: string,
 ): JoinReport {
+  const inScope = crawl.pages.filter((page) => inPropertyScope(siteUrl, page.url))
   const matchedKeys = new Set<string>()
   const unmatchedSample: string[] = []
   let matched = 0
@@ -50,7 +57,7 @@ export function joinCrawl(
 
   // نگاشت کلیدِ بدون‌پارامتر → وجود دارد؟ فقط برای تشخیص علت، نه برای تطبیق
   const looseKeys = new Set<string>()
-  for (const page of crawl.pages) {
+  for (const page of inScope) {
     const loose = looseUrlKey(page.url)
     if (loose !== null) looseKeys.add(loose)
   }
@@ -69,12 +76,13 @@ export function joinCrawl(
 
   return {
     gscPages: pageRows.length,
-    crawlPages: crawl.pages.length,
+    crawlPages: inScope.length,
     matched,
     matchRate: pageRows.length > 0 ? matched / pageRows.length : 0,
     paramMismatches,
     unmatchedSample,
-    crawlOnly: crawl.pages.length - matchedKeys.size,
+    crawlOnly: inScope.length - matchedKeys.size,
+    outOfScope: crawl.pages.length - inScope.length,
   }
 }
 
@@ -99,11 +107,14 @@ export function attachCrawl(
 export function pagesWithoutImpressions(
   pageRows: readonly GscPageRow[],
   crawl: CrawlImport,
+  siteUrl: string,
 ): CrawlPage[] {
   const seen = new Set<string>()
   for (const row of pageRows) {
     const key = normalizeUrlKey(row.page)
     if (key !== null) seen.add(key)
   }
-  return crawl.pages.filter((page) => !seen.has(page.key))
+  return crawl.pages.filter(
+    (page) => inPropertyScope(siteUrl, page.url) && !seen.has(page.key),
+  )
 }

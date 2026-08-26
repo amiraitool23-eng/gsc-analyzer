@@ -101,3 +101,34 @@ export function looseUrlKey(raw: string): string | null {
   const q = key.indexOf('?')
   return q === -1 ? key : key.slice(0, q)
 }
+
+/**
+ * آیا این آدرس داخل محدودهٔ این پراپرتی سرچ کنسول است؟
+ *
+ * چرا لازم است؟ کراول معمولاً بیشتر از یک پراپرتی را می‌گیرد. در دادهٔ واقعی
+ * اولین کاربر، فایل هم `blog.nimkat.org` داشت و هم `nimkat.org` — و هر ۲۵۷
+ * صفحهٔ دومی صفر نمایش داشتند، چون سرچ کنسول فقط روی پراپرتی بلاگ وصل بود.
+ *
+ * بدون این تابع، آن ۲۵۷ صفحه به‌عنوان «محتوایی که هیچ کاری نمی‌کند» علامت
+ * می‌خوردند، در حالی که فقط جای دیگری گزارش می‌شوند. یعنی دقیقاً همان «دادهٔ
+ * ناقصی که کار سئوکار را بیشتر می‌کند».
+ */
+export function inPropertyScope(siteUrl: string, url: string): boolean {
+  const target = normalizeUrlKey(url)
+  if (target === null) return false
+
+  if (siteUrl.startsWith('sc-domain:')) {
+    // پراپرتی Domain همه‌ی زیردامنه‌ها را پوشش می‌دهد
+    const domain = siteUrl.slice('sc-domain:'.length).toLowerCase().replace(/^www\./, '')
+    if (domain === '') return false
+    const host = target.split('/')[0]
+    return host === domain || host.endsWith(`.${domain}`)
+  }
+
+  // پراپرتی URL-prefix: میزبان و ابتدای مسیر هر دو باید بخوانند
+  const prefix = normalizeUrlKey(siteUrl)
+  if (prefix === null) return false
+  if (target === prefix) return true
+  // مرز مسیر مهم است: `/blog` نباید `/blogfa` را هم بگیرد
+  return target.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`)
+}
